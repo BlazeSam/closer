@@ -1,0 +1,140 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ListingStatus {
+  ACTIVE
+  RESERVED
+  SOLD
+  PAUSED
+}
+enum BuyerType {
+  HUMAN
+  AGENT
+}
+enum NegotiationStatus {
+  OPEN
+  AWAITING_APPROVAL
+  AGREED
+  PAID
+  DECLINED
+  EXPIRED
+  TAKEN_OVER
+}
+enum MessageRole {
+  BUYER
+  SELLER_AGENT
+  SELLER
+  SYSTEM
+}
+enum ApprovalKind {
+  PRICE
+  CUSTOM
+}
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  DENIED
+  EXPIRED
+}
+
+model Seller {
+  id       String    @id @default(cuid())
+  name     String
+  email    String
+  listings Listing[]
+}
+
+// Public fields only. Private prices live in ListingPrivate.
+model Listing {
+  id          String         @id @default(cuid())
+  slug        String         @unique
+  title       String
+  description String
+  condition   String
+  imageUrl    String?
+  askCents    Int
+  currency    String         @default("USD")
+  notes       String         @default("")
+  status      ListingStatus  @default(ACTIVE)
+  reservedByNegotiationId String?
+  reservedUntil           DateTime?
+  sellerId    String
+  seller      Seller         @relation(fields: [sellerId], references: [id])
+  private     ListingPrivate?
+  negotiations Negotiation[]
+  createdAt   DateTime       @default(now())
+}
+
+// NEVER select from buyer-facing code.
+model ListingPrivate {
+  listingId       String  @id
+  listing         Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  floorCents      Int
+  autoAcceptCents Int
+}
+
+model Negotiation {
+  id                  String            @id @default(cuid())
+  listingId           String
+  listing             Listing           @relation(fields: [listingId], references: [id])
+  buyerType           BuyerType
+  buyerLabel          String
+  buyerIp             String?
+  status              NegotiationStatus @default(OPEN)
+  round               Int               @default(0)
+  lastBuyerOfferCents Int?
+  lastCounterCents    Int?
+  agreedCents         Int?
+  agreedExpiresAt     DateTime?
+  paypalOrderId       String?
+  paypalCaptureId     String?
+  paidAt              DateTime?
+  version             Int               @default(0)
+  messages            Message[]
+  approvals           ApprovalRequest[]
+  audit               AuditEvent[]
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  @@index([listingId, buyerIp, createdAt])
+}
+
+model Message {
+  id            String      @id @default(cuid())
+  negotiationId String
+  negotiation   Negotiation @relation(fields: [negotiationId], references: [id], onDelete: Cascade)
+  role          MessageRole
+  content       String
+  createdAt     DateTime    @default(now())
+
+  @@index([negotiationId, createdAt])
+}
+
+model ApprovalRequest {
+  id            String         @id @default(cuid())
+  negotiationId String
+  negotiation   Negotiation    @relation(fields: [negotiationId], references: [id], onDelete: Cascade)
+  kind          ApprovalKind
+  details       Json
+  status        ApprovalStatus @default(PENDING)
+  sellerReply   String?
+  createdAt     DateTime       @default(now())
+  resolvedAt    DateTime?
+}
+
+model AuditEvent {
+  id            String      @id @default(cuid())
+  negotiationId String
+  negotiation   Negotiation @relation(fields: [negotiationId], references: [id], onDelete: Cascade)
+  type          String
+  payload       Json
+  createdAt     DateTime    @default(now())
+
+  @@index([negotiationId, createdAt])
+}
