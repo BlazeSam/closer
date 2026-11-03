@@ -1,0 +1,24 @@
+# Render blueprint: web service + Postgres. Secrets (sync: false) are set in the Render dashboard.
+databases:
+  - name: closer-db
+    plan: free
+
+services:
+  - type: web
+    name: closer
+    runtime: node
+    plan: starter # always-on: free tier sleeps and would cold-start mid-demo
+    buildCommand: npm ci && npx prisma generate && npx prisma db push --skip-generate && npm run build
+    startCommand: npm start
+    healthCheckPath: /
+    envVars:
+      - { key: DATABASE_URL, fromDatabase: { name: closer-db, property: connectionString } }
+      - { key: PAYPAL_ENVIRONMENT, value: SANDBOX }
+      - { key: CURRENCY, value: USD }
+      - { key: AI_PROVIDER, value: anthropic }
+      - { key: PAYPAL_CLIENT_ID, sync: false }
+      - { key: PAYPAL_CLIENT_SECRET, sync: false }
+      - { key: NEXT_PUBLIC_PAYPAL_CLIENT_ID, sync: false }
+      - { key: ANTHROPIC_API_KEY, sync: false }
+      - { key: SELLER_PASSWORD, sync: false }
+      - { key: APP_URL, sync: false }
