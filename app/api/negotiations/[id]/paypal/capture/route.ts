@@ -1,0 +1,32 @@
+import { prisma } from "../../../../../../lib/db";
+import { fmt } from "../../../../../../lib/replies";
+import { captureOrder, verifyCapture } from "../../../../../../lib/paypal";
+
+export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const n = await prisma.negotiation.findUnique({ where: { id }, include: { listing: { select: { id: true, currency: true } } } });
+  if (!n) return Response.json({ error: "not found" }, { status: 404 });
+  if (n.status === "PAID") return Response.json({ ok: true, captureId: n.paypalCaptureId });
+  if (n.status !== "AGREED" || n.agreedCents == null || !n.paypalOrderId) return Response.json({ error: "not payable" }, { status: 409 });
+
+  // Always capture the order WE stored, never an id supplied by the client.
+  let cap;
+  try {
+    cap = await captureOrder(n.paypalOrderId);
+  } catch (e) {
+    await prisma.auditEvent.create({ data: { negotiationId: id, type: "PAYPAL_CAPTURE_ERROR", payload: { error: String(e) } } });
+    return Response.json({ error: "payment could not be captured, you can retry" }, { status: 502 });
+  }
+  const v = verifyCapture(cap, n.agreedCents, n.listing.currency);
+  if (!v.ok) {
+    await prisma.auditEvent.create({ data: { negotiationId: id, type: "PAYPAL_CAPTURE_MISMATCH", payload: { reason: v.reason, orderId: n.paypalOrderId } } });
+    return Response.json({ error: `payment verification failed: ${v.reason}` }, { status: 502 });
+  }
+  await prisma.$transaction([
+    prisma.negotiation.updateMany({ where: { id, status: "AGREED" }, data: { status: "PAID", paypalCaptureId: v.captureId, paidAt: new Date(), version: { increment: 1 } } }),
+    prisma.listing.update({ where: { id: n.listing.id }, data: { status: "SOLD", reservedUntil: null } }),
+    prisma.message.create({ data: { negotiationId: id, role: "SYSTEM", content: `Payment received: ${fmt(n.agreedCents, n.listing.currency)}. Thanks! The seller will be in touch.` } }),
+    prisma.auditEvent.create({ data: { negotiationId: id, type: "PAYPAL_CAPTURED", payload: { captureId: v.captureId, agreedCents: n.agreedCents } } }),
+  ]);
+  return Response.json({ ok: true, captureId: v.captureId });
+}
