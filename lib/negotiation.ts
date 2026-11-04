@@ -90,6 +90,19 @@ export async function applyOffer(negotiationId: string, offerCents: number, offe
   });
 }
 
+// A buyer who is mid-checkout (or already approved at PayPal) shouldn't lose the deal to the expiry timer.
+// Revive an EXPIRED deal if the listing is still free; refresh the clock on an AGREED one.
+export async function reviveForCheckout(negotiationId: string): Promise<boolean> {
+  return prisma.$transaction(async (tx) => {
+    const n = await tx.negotiation.findUniqueOrThrow({ where: { id: negotiationId } });
+    if (n.agreedCents == null || (n.status !== "EXPIRED" && n.status !== "AGREED")) return false;
+    if (!(await reserve(tx, n.listingId, n.id))) return false;
+    await tx.negotiation.update({ where: { id: n.id }, data: { status: "AGREED", agreedExpiresAt: minutes(env().RESERVATION_MINUTES), version: { increment: 1 } } });
+    if (n.status === "EXPIRED") await audit(tx, n.id, "DEAL_REVIVED", { reason: "checkout after expiry" });
+    return true;
+  });
+}
+
 export async function addMessage(negotiationId: string, role: "BUYER" | "SELLER_AGENT" | "SELLER" | "SYSTEM", content: string) {
   return prisma.message.create({ data: { negotiationId, role, content } });
 }

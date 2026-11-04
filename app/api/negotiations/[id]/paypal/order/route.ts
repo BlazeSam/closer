@@ -1,10 +1,11 @@
 import { prisma } from "../../../../../../lib/db";
-import { sweep } from "../../../../../../lib/negotiation";
+import { reviveForCheckout, sweep } from "../../../../../../lib/negotiation";
 import { createOrder } from "../../../../../../lib/paypal";
 
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   await sweep();
   const { id } = await params;
+  await reviveForCheckout(id); // opening checkout keeps the deal alive
   const n = await prisma.negotiation.findUnique({ where: { id }, include: { listing: { select: { title: true, currency: true } } } });
   if (!n) return Response.json({ error: "not found" }, { status: 404 });
   if (n.status !== "AGREED" || n.agreedCents == null) return Response.json({ error: `not payable (${n.status})` }, { status: 409 });

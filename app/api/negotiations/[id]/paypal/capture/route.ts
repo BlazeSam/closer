@@ -1,9 +1,12 @@
 import { prisma } from "../../../../../../lib/db";
+import { reviveForCheckout } from "../../../../../../lib/negotiation";
 import { fmt } from "../../../../../../lib/replies";
 import { captureOrder, verifyCapture } from "../../../../../../lib/paypal";
 
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  // Buyer already approved at PayPal; don't let the expiry timer strand them if the listing is still free.
+  await reviveForCheckout(id);
   const n = await prisma.negotiation.findUnique({ where: { id }, include: { listing: { select: { id: true, currency: true } } } });
   if (!n) return Response.json({ error: "not found" }, { status: 404 });
   if (n.status === "PAID") return Response.json({ ok: true, captureId: n.paypalCaptureId });
