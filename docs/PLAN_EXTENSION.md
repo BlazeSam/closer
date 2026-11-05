@@ -64,12 +64,12 @@ Negotiations currently key off a web session. An extension thread needs its own 
   returns `{ reply, status, checkoutUrl?, invoiceUrl? }`. Auth by token, rate limited per token.
   Internally this is `handleTurn` and nothing more.
 
-### 3. Mock marketplace page (`/demo/marketplace`)
+### 3. Mock marketplace page (`/demo/marketplace`) -- DONE (a114c3b)
 A fake Marketplace-style chat served by Closer. Same DOM hooks the real content script targets,
 so the extension works on it unmodified. This is what judges click, and what you test against
 when Facebook's DOM shifts.
 
-### 4. The extension (MV3, unpacked)
+### 4. The extension (MV3, unpacked) -- BUILT (a114c3b), NEVER LOADED IN REAL CHROME
 - `content.js` on the mock page and `facebook.com/messages/*`: read the newest inbound message,
   insert text into the composer.
 - `popup.html`: paste pairing token, pick which listing this thread is for, auto-send toggle.
@@ -105,6 +105,28 @@ hosted-checkout path is the cheap place to add it. Availability for CAD and in s
 - Do not claim escrow or "safe for both sides".
 - The extension never sends a message the seller did not approve, unless the seller turned on
   auto-send themselves.
+
+## Review findings (2026-11-05, steps 3-4)
+
+Verified: typecheck clean, 44 tests pass, no protected file touched, token only ever in a POST body,
+auto-send defaults off, no marketplace branding or affiliation claim.
+
+Fixed during review:
+- A model-provider failure escaped `llmTurn` and returned **500**, so with a credit-less key every
+  live call failed and the extension showed "Server error 500". It now falls back to the policy
+  template, evaluates the buyer offer deterministically if the model died before `evaluate_offer`,
+  and records an `LLM_FAILED` audit event. Covered by `tests/llmFallback.test.ts` (provider mocked).
+
+Still open, carried forward:
+- The extension has **never been loaded into real Chrome**. Manifest, popup, `chrome.storage` and
+  service-worker messaging are untested.
+- The Facebook selectors in `extension/selectors.js` are **unverified guesses**. `isInbound` infers
+  direction from screen position, so an unrendered node (zero-width rect) reads as inbound: with
+  auto-send ON that risks the agent replying to its own message. Verify before any auto-send demo.
+- Mock thread ids are per page load, so reloading starts a new negotiation.
+- Listing slug is one global popup setting, not per thread.
+- No token-revocation UI; revoke by setting `revokedAt` on the `SellerToken` row.
+- Extension host/matches are hardcoded to `localhost:3100` and must be edited for a deployed origin.
 
 ## Open questions
 

@@ -148,16 +148,34 @@ async function llmTurn(negotiationId: string, message: string, listing: { askCen
   const buyerAmounts = (await prisma.message.findMany({ where: { negotiationId, role: "BUYER" } })).flatMap((m) => extractAmounts(m.content).map((a) => Math.round(a * 100)));
   const allowed = () => [listing.askCents, ...buyerAmounts, ...(outcome && "priceCents" in outcome ? [outcome.priceCents] : []), ...(n.lastCounterCents ? [n.lastCounterCents] : []), ...(n.agreedCents ? [n.agreedCents] : [])];
 
-  let reply = await run();
-  if (!replyIsClean(reply, allowed())) {
+  // A provider outage, or a key with no credit, must not take the sale down with a 500. Fall back to
+  // the policy template, exactly as the no-API-key path does. Prices still come only from the policy.
+  const safeRun = async () => {
+    try {
+      return await run();
+    } catch (e) {
+      await prisma.auditEvent.create({ data: { negotiationId, type: "LLM_FAILED", payload: { error: String((e as Error)?.message ?? e).slice(0, 500) } } });
+      return "";
+    }
+  };
+
+  let reply = await safeRun();
+  if (reply && !replyIsClean(reply, allowed())) {
     await prisma.auditEvent.create({ data: { negotiationId, type: "GUARD_TRIGGERED", payload: { reply, attempt: 1 } } });
-    reply = await run();
-    if (!replyIsClean(reply, allowed())) {
+    reply = await safeRun();
+    if (reply && !replyIsClean(reply, allowed())) {
       await prisma.auditEvent.create({ data: { negotiationId, type: "GUARD_TRIGGERED", payload: { reply, attempt: 2, replaced: true } } });
-      reply = outcome ? replyFor(outcome, listing.askCents, listing.currency) : SAFE_TEMPLATE;
+      reply = "";
     }
   }
-  if (!reply.trim()) reply = outcome ? replyFor(outcome, listing.askCents, listing.currency) : SAFE_TEMPLATE;
+  if (!reply.trim()) {
+    // The model can die before it ever calls evaluate_offer; do not silently drop the buyer offer.
+    if (!outcome) {
+      const amounts = extractAmounts(message);
+      if (amounts.length) outcome = await applyOffer(negotiationId, Math.round(amounts[amounts.length - 1] * 100));
+    }
+    reply = outcome ? replyFor(outcome, listing.askCents, listing.currency) : SAFE_TEMPLATE;
+  }
   return { reply, outcome };
 }
 
