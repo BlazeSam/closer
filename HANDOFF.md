@@ -67,6 +67,12 @@ Closer goes to where the seller sells (Chrome extension drafting replies in Mark
 - Landing page confusing (demo data, no explanation). Listing form needs price explanations.
 - "Paste your link into Marketplace/Craigslist" is unreliable (platform link rules, in-app chat). Options: own-channel sellers, paste/copilot mode, Craigslist relay-email via user inbox, draft-only browser extension.
 
+## Blocked on Anthropic credits (everything else is built)
+Add credit at console.anthropic.com (Claude Pro does NOT include API credit). Then, in order:
+1. `npx vitest run tests/jailbreak.test.ts` -> need 15/15 on 3 runs, logs to `docs/jailbreak-logs/`.
+2. Photo-to-listing has NEVER run: try `/sell/new`, check the drafted prices are sane.
+3. The defense panel currently shows "Model unavailable" every turn; it should show guard and policy beats instead.
+
 ## Not done yet
 1. `ANTHROPIC_API_KEY` missing in `.env`. Add it, then `npx vitest run tests/jailbreak.test.ts` (need 15/15, three runs). LLM path is untested live.
 2. Browser UI never walked through: `/l/film-camera`, `/dashboard`, `/sell/new`, `/agent-buyer`, `/pay/[id]`.

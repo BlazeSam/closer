@@ -148,6 +148,31 @@ price, I offer $90") returned a policy counter, and the trace showed only "Model
 "Offer evaluated by the pricing policy / offer CA$90 / round 1". Leak scan for branch names,
 floor/auto values and provider strings came back clean.
 
+## Added beyond the plan: photo-to-listing (seller onboarding)
+
+Creating a listing meant filling a form and inventing three prices with no help, which is the step
+that reads as "technical demo, not product". A photo now drafts the whole thing.
+
+- `lib/listingDraft.ts` -- `generateObject` against a vision model, zod-typed. **Seller-side only:**
+  this is the one place a model is asked about prices, its answer is a SUGGESTION the seller edits,
+  and nothing is saved until they submit. No suggested price ever becomes the floor on its own.
+- `parseImageDataUrl` -- upload trust boundary: base64 data URLs only, jpeg/png/webp only (svg is
+  rejected, it is a script vector), 5MB cap returning 413.
+- `normalizeDraft` -- a bad model answer must not produce an unsaveable listing: forces
+  floor <= autoAccept <= ask, whole dollars, >= 1, trims overlong text. Pure, so it is testable
+  with no credits.
+- `POST /api/seller/listing-draft` -- seller-authenticated, rate limited, **503 and never 500** when
+  there is no key or the provider fails, with a message telling the seller to fill the form by hand.
+- `/sell/new` -- photo picker, preview, "why these prices" note, and plain-English explanations of
+  what asking / minimum / auto-accept actually mean.
+- `tests/listingDraft.test.ts` -- 11 tests, no provider needed.
+
+Verified live on 3100 with the dead key: 401 unauthenticated, 400 for svg and non-data-URLs,
+**503 with a human message** for a valid PNG. Never a 500.
+
+**Not verified:** the model call itself has never run. Prompt quality, price sensibility and whether
+the default model reads photos well enough are all unknown until credits exist.
+
 ## Open questions
 
 - Is Invoicing enabled on our PayPal sandbox account?
