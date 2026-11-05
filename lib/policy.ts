@@ -15,7 +15,7 @@ export type PolicyState = {
 export type Decision =
   | { type: "ACCEPT"; priceCents: number }
   | { type: "COUNTER"; priceCents: number }
-  | { type: "NEEDS_APPROVAL"; priceCents: number }
+  | { type: "NEEDS_APPROVAL"; priceCents: number; counterCents: number; final: boolean }
   | { type: "FINAL_OFFER"; priceCents: number }
   | { type: "REJECT_INVALID" };
 
@@ -75,9 +75,13 @@ export function evaluateOffer(
   if (s.lastCounterCents != null && offerCents >= s.lastCounterCents) {
     return { type: "ACCEPT", priceCents: s.lastCounterCents };
   }
-  if (offerCents >= l.floorCents) return { type: "NEEDS_APPROVAL", priceCents: offerCents };
-
   const counter = counterFor(l, s);
+  // Mid-band: the buyer sees an ordinary counter (never below their own offer), and the seller is asked
+  // silently. Otherwise "let me check with the seller" would reveal that floor <= offer < autoAccept.
+  if (offerCents >= l.floorCents) {
+    const shown = Math.min(Math.max(counter, ceilDollar(offerCents) + 100), s.lastCounterCents ?? l.askCents, l.askCents);
+    return { type: "NEEDS_APPROVAL", priceCents: offerCents, counterCents: shown, final: s.round >= maxRounds };
+  }
   if (s.round >= maxRounds) return { type: "FINAL_OFFER", priceCents: counter };
   return { type: "COUNTER", priceCents: counter };
 }

@@ -74,9 +74,10 @@ export async function applyOffer(negotiationId: string, offerCents: number, offe
       data = { ...data, ...a };
       out = { kind: "ACCEPT", priceCents: d.priceCents };
     } else if (d.type === "NEEDS_APPROVAL") {
-      data = { ...data, status: "AWAITING_APPROVAL" };
-      await tx.approvalRequest.create({ data: { negotiationId: n.id, kind: "PRICE", details: { offerCents } } });
-      out = { kind: "PENDING" };
+      // Shadow approval: negotiation stays OPEN and the buyer sees a normal counter (no tell).
+      data = { ...data, lastCounterCents: d.counterCents };
+      await tx.approvalRequest.create({ data: { negotiationId: n.id, kind: "PRICE", details: { offerCents, shadow: true } } });
+      out = { kind: d.final ? "FINAL" : "COUNTER", priceCents: d.counterCents };
     } else {
       data = { ...data, lastCounterCents: d.priceCents };
       out = { kind: d.type === "FINAL_OFFER" ? "FINAL" : "COUNTER", priceCents: d.priceCents };
@@ -136,7 +137,16 @@ export async function resolveApproval(approvalId: string, approve: boolean, repl
       return "OK";
     }
 
-    const offer = (a.details as { offerCents: number }).offerCents;
+    const { offerCents: offer, shadow } = a.details as { offerCents: number; shadow?: boolean };
+    if (shadow) {
+      // Buyer was already shown a counter. Deny/expire = silence. Approve = accept their offer if still open.
+      if (!approve || by !== "SELLER" || n.status !== "OPEN") return "OK";
+      const ag = await agree(tx, n, offer);
+      if (!ag) return "UNAVAILABLE";
+      await tx.negotiation.update({ where: { id: n.id }, data: { ...ag, version: { increment: 1 } } });
+      await tx.message.create({ data: { negotiationId: n.id, role: "SELLER_AGENT", content: `Good news, the seller accepted ${fmt(offer, l.currency)}. You can pay securely with PayPal below.` } });
+      return "OK";
+    }
     if (approve && by === "SELLER") {
       const ag = await agree(tx, n, offer);
       if (!ag) {

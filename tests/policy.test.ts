@@ -4,6 +4,18 @@ import { counterFor, evaluateOffer, type Decision, type PolicyListing, type Poli
 const bike: PolicyListing = { askCents: 22000, floorCents: 17000, autoAcceptCents: 20000, currency: "USD" };
 const st = (o: Partial<PolicyState> = {}): PolicyState => ({ round: 0, seed: "n1", ...o });
 
+describe("floor-probe leak", () => {
+  it("shown counter for mid-band offers is never below the offer and within [floor, ask]", () => {
+    for (let round = 0; round < 6; round++)
+      for (let o = bike.floorCents; o < bike.autoAcceptCents; o += 100) {
+        const d = evaluateOffer(bike, st({ round }), o);
+        if (d.type !== "NEEDS_APPROVAL") throw new Error("expected approval");
+        expect(d.counterCents).toBeGreaterThan(o);
+        expect(d.counterCents).toBeLessThanOrEqual(bike.askCents);
+      }
+  });
+});
+
 describe("evaluateOffer rules", () => {
   it("accepts at/above auto-accept", () => {
     expect(evaluateOffer(bike, st(), 20000)).toEqual({ type: "ACCEPT", priceCents: 20000 });
@@ -14,8 +26,8 @@ describe("evaluateOffer rules", () => {
   it("accepts at last counter when buyer meets it", () => {
     expect(evaluateOffer(bike, st({ lastCounterCents: 19000 }), 19500)).toEqual({ type: "ACCEPT", priceCents: 19000 });
   });
-  it("needs approval between floor and auto-accept", () => {
-    expect(evaluateOffer(bike, st(), 18000)).toEqual({ type: "NEEDS_APPROVAL", priceCents: 18000 });
+  it("needs approval between floor and auto-accept, showing a counter above the offer", () => {
+    expect(evaluateOffer(bike, st(), 18000)).toEqual({ type: "NEEDS_APPROVAL", priceCents: 18000, counterCents: 22000, final: false });
     expect(evaluateOffer(bike, st(), 17000).type).toBe("NEEDS_APPROVAL");
   });
   it("counters below floor, starting at ask", () => {
