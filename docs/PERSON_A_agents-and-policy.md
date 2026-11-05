@@ -29,7 +29,7 @@ The AI talks, the code decides. The LLM never sees `floorCents` / `autoAcceptCen
 - Buyer agent: with shadow approvals the negotiation stays OPEN, so a late seller acceptance shows up as a message on the next turn/poll, not as AWAITING_APPROVAL.
 
 ## New direction (see [PLAN_EXTENSION.md](PLAN_EXTENSION.md))
-- [ ] Thread-aware negotiations: `channel` + `externalThreadId` on `Negotiation`, find-or-create per Marketplace thread. Policy and state machine unchanged.
+- [x] Thread-aware negotiations: `channel` (WEB/FB_MARKETPLACE/KIJIJI/MOCK) + `externalThreadId` on `Negotiation`, `@@unique([listingId, externalThreadId])`, find-or-create in `startNegotiation(slug, buyerType, label, ip, thread?)`. P2002 race falls back to the winning row. Web paths untouched (NULLs are distinct in Postgres); the per-IP new-negotiation cap now applies to web only, since a thread cannot be reset by reopening it. Tests in `tests/concurrency.test.ts`.
 - [ ] Agent asks for the buyer email when `channel != WEB`, so the invoice can be sent. Still no digits from the LLM.
 - [ ] Re-run the jailbreak suite against the extension path once it exists; a pasted buyer message is still untrusted input.
 

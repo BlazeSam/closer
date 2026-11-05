@@ -1,6 +1,7 @@
 // The AI talks, the code decides: the LLM only phrases replies. Every price comes from applyOffer()
 // (the policy) and is substituted into {price} placeholders server-side. Without an API key the
 // deterministic templates in replies.ts are used, so the whole flow works with no LLM at all.
+import { Prisma } from "@prisma/client";
 import { anthropic } from "@ai-sdk/anthropic";
 import { openai } from "@ai-sdk/openai";
 import { generateText, stepCountIs, tool } from "ai";
@@ -47,13 +48,32 @@ const hasKey = () => Boolean(env().AI_PROVIDER === "openai" ? process.env.OPENAI
 const jitterDelay = () =>
   process.env.CLOSER_NO_DELAY ? Promise.resolve() : new Promise((r) => setTimeout(r, 500 + Math.random() * 1500));
 
-export async function startNegotiation(slug: string, buyerType: "HUMAN" | "AGENT", buyerLabel: string, ip: string) {
+export type Thread = { channel: "FB_MARKETPLACE" | "KIJIJI" | "MOCK"; externalThreadId: string };
+
+// `thread` ties this negotiation to one conversation on an outside platform (a Marketplace thread),
+// so the same buyer keeps the same round counter and counter schedule across messages.
+export async function startNegotiation(slug: string, buyerType: "HUMAN" | "AGENT", buyerLabel: string, ip: string, thread?: Thread) {
   const listing = await prisma.listing.findUnique({ where: { slug }, select: { id: true } });
   if (!listing) return null;
-  const since = new Date(Date.now() - 3600_000);
-  const recent = await prisma.negotiation.count({ where: { listingId: listing.id, buyerIp: ip, createdAt: { gt: since } } });
-  if (recent >= 5) throw new RateLimitError("too many new negotiations for this listing");
-  return prisma.negotiation.create({ data: { listingId: listing.id, buyerType, buyerLabel: buyerLabel.slice(0, 60), buyerIp: ip } });
+  const key = thread && { listingId_externalThreadId: { listingId: listing.id, externalThreadId: thread.externalThreadId } };
+  if (key) {
+    const existing = await prisma.negotiation.findUnique({ where: key });
+    if (existing) return existing;
+  } else {
+    // Web only: stop a buyer resetting the round counter by opening fresh chats. A thread can't be
+    // reset this way because it is found, not created. ponytail: extension calls are capped per token instead.
+    const since = new Date(Date.now() - 3600_000);
+    const recent = await prisma.negotiation.count({ where: { listingId: listing.id, buyerIp: ip, createdAt: { gt: since } } });
+    if (recent >= 5) throw new RateLimitError("too many new negotiations for this listing");
+  }
+  const data = { listingId: listing.id, buyerType, buyerLabel: buyerLabel.slice(0, 60), buyerIp: ip, ...(thread ?? {}) };
+  try {
+    return await prisma.negotiation.create({ data });
+  } catch (e) {
+    // Two messages from one thread arriving at once: the loser of the unique race takes the winner's row.
+    if (key && e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") return prisma.negotiation.findUniqueOrThrow({ where: key });
+    throw e;
+  }
 }
 
 export async function handleTurn(negotiationId: string, message: string, offerCents?: number): Promise<TurnResult> {

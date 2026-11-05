@@ -13,6 +13,12 @@ enum ListingStatus {
   SOLD
   PAUSED
 }
+enum Channel {
+  WEB
+  FB_MARKETPLACE
+  KIJIJI
+  MOCK
+}
 enum BuyerType {
   HUMAN
   AGENT
@@ -86,6 +92,8 @@ model Negotiation {
   buyerType           BuyerType
   buyerLabel          String
   buyerIp             String?
+  channel             Channel           @default(WEB)
+  externalThreadId    String?
   status              NegotiationStatus @default(OPEN)
   round               Int               @default(0)
   lastBuyerOfferCents Int?
@@ -103,6 +111,9 @@ model Negotiation {
   updatedAt           DateTime          @updatedAt
 
   @@index([listingId, buyerIp, createdAt])
+  // One external conversation (a Marketplace thread) maps to exactly one negotiation.
+  // Postgres treats NULLs as distinct, so web negotiations are unaffected.
+  @@unique([listingId, externalThreadId])
 }
 
 model Message {

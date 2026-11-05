@@ -63,4 +63,29 @@ describe.skipIf(!live)("negotiation concurrency (live DB)", () => {
     expect(done.status).toBe("AGREED");
     expect(done.agreedCents).toBe(offer);
   }, 60_000);
+
+  it("one external thread maps to one negotiation, even under concurrent first messages", async () => {
+    const { startNegotiation } = await import("../lib/sellerAgent");
+    const { applyOffer } = await import("../lib/negotiation");
+    const { prisma } = await import("../lib/db");
+    await prisma.listing.updateMany({ where: { slug: "film-camera" }, data: { status: "ACTIVE", reservedByNegotiationId: null, reservedUntil: null } }); // earlier tests leave it reserved
+    const thread = { channel: "FB_MARKETPLACE" as const, externalThreadId: `fb-${Math.random()}` };
+    const got = await Promise.all([1, 2, 3].map(() => startNegotiation("film-camera", "HUMAN", "fb buyer", "ext", thread)));
+    expect(new Set(got.map((n) => n!.id)).size).toBe(1);
+    made.push(got[0]!.id);
+    expect(got[0]!.channel).toBe("FB_MARKETPLACE");
+    // The round counter has to survive across messages, or every reply would restart the counter schedule.
+    await applyOffer(got[0]!.id, 100);
+    const again = (await startNegotiation("film-camera", "HUMAN", "fb buyer", "ext", thread))!;
+    expect(again.id).toBe(got[0]!.id);
+    expect(again.round).toBe(1);
+  }, 60_000);
+
+  it("web negotiations stay independent under the new unique index", async () => {
+    const { startNegotiation } = await import("../lib/sellerAgent");
+    const xs = await Promise.all([1, 2].map((i) => startNegotiation("film-camera", "HUMAN", `web${i}`, `w-${Math.random()}`)));
+    xs.forEach((n) => made.push(n!.id));
+    expect(new Set(xs.map((n) => n!.id)).size).toBe(2);
+    expect(xs[0]!.channel).toBe("WEB");
+  }, 60_000);
 });
