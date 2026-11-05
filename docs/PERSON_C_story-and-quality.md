@@ -15,8 +15,14 @@ Submission due **Nov 12** (confirm exact time and time zone on the Devpost page)
 - [ ] **Video (< 3:00, public on YouTube, no copyrighted music).** Outline in SCOPE.md section 12. Also record a **fallback happy-path video** in case the live sandbox flakes.
 - [ ] Be careful with claims: do not say "escrow" or "safe for both sides". Say PayPal settles the payment.
 
+## New direction (see [PLAN_EXTENSION.md](PLAN_EXTENSION.md))
+- [ ] Interviews now have a sharper question: would you let an agent draft your Marketplace replies, and would you send a payment link to a stranger? The scam-link objection came from this team and should be tested on real sellers.
+- [ ] Video must show the extension drafting inside a Marketplace-style chat. Judges cannot install it, so the mock page at `/demo/marketplace` is the thing they can try.
+- [ ] Do not claim we are a Facebook integration or partner. We draft replies in the seller own browser and the seller sends them.
+
 ## Demo script (rehearse twice)
-1. `/sell/new`: create a listing with a secret minimum, copy the link.
+1. `/sell/new`: create a listing with a secret minimum.
+1b. `/demo/marketplace`: buyer lowballs in a Marketplace-style chat; extension drafts the counter; seller sends it. Deal closes, email arrives, PayPal invoice is paid on paypal.com.
 2. `/l/<slug>`: haggle, try one jailbreak (it fails), reach a deal, pay with the sandbox buyer.
 3. `/dashboard`: row flips to PAID, open the audit log.
 4. `/agent-buyer`: budget $190, start, watch the two agents negotiate, approve payment with one tap.

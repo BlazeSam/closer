@@ -60,6 +60,9 @@ Verified end to end on real Neon + PayPal sandbox: negotiate via agent API, sell
 - All page routes return 200 on a dev server; visual walkthrough NOT done (browser screenshots failed).
 - Prize list reviewed: no design prize; Design is a judging criterion (complete coherent product). Most Impactful ($5k) not yet in SCOPE targets.
 
+## Direction (decided 2026-11-05) -> `docs/PLAN_EXTENSION.md`
+Closer goes to where the seller sells (Chrome extension drafting replies in Marketplace), money moves via PayPal invoice on paypal.com. Hosted link + Orders checkout kept for Closer-link and buyer-agent buyers. Draft-by-default with auto-send opt-in; mock marketplace page for judges; email notification; Pay Later is a stretch.
+
 ## Product concerns raised (decide before building)
 - Landing page confusing (demo data, no explanation). Listing form needs price explanations.
 - "Paste your link into Marketplace/Craigslist" is unreliable (platform link rules, in-app chat). Options: own-channel sellers, paste/copilot mode, Craigslist relay-email via user inbox, draft-only browser extension.

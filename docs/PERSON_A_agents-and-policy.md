@@ -28,6 +28,11 @@ The AI talks, the code decides. The LLM never sees `floorCents` / `autoAcceptCen
 - Live seller agent check, jailbreak 15/15 x3 with logs, buyer prompt tuning. Last attempt failed with `credit balance is too low` (Claude Pro does not include API credits).
 - Buyer agent: with shadow approvals the negotiation stays OPEN, so a late seller acceptance shows up as a message on the next turn/poll, not as AWAITING_APPROVAL.
 
+## New direction (see [PLAN_EXTENSION.md](PLAN_EXTENSION.md))
+- [ ] Thread-aware negotiations: `channel` + `externalThreadId` on `Negotiation`, find-or-create per Marketplace thread. Policy and state machine unchanged.
+- [ ] Agent asks for the buyer email when `channel != WEB`, so the invoice can be sent. Still no digits from the LLM.
+- [ ] Re-run the jailbreak suite against the extension path once it exists; a pasted buyer message is still untrusted input.
+
 ## Definition of done
 Jailbreak suite passes 3x, floor-probe test passes, two agents negotiate live on the hosted URL.
 

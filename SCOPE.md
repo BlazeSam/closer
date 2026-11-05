@@ -10,6 +10,12 @@
 
 A seller creates a listing with an asking price and a secret minimum. Closer gives them a shareable link. Buyers, either humans in a chat or **other AI agents** through an API, negotiate with Closer's seller agent. When a deal is agreed, Closer creates a PayPal order for the agreed price and the buyer pays inside the chat. The seller watches everything from a dashboard and approves anything outside the agent's authority.
 
+> **Direction change, 2026-11-05.** The "paste your Closer link into your Marketplace ad" story does not survive
+> contact with those platforms (link rules, in-platform chat, and an unfamiliar payment domain reads as a scam to
+> buyers). Closer now goes to where the seller already sells, via a browser extension, and money moves through a
+> PayPal invoice on paypal.com. The hosted link + checkout stays for buyers who arrive through a Closer link or a
+> buyer agent. See [docs/PLAN_EXTENSION.md](docs/PLAN_EXTENSION.md). Everything in section 2 is unchanged.
+
 **Pitch:** *Delegate selling to an AI agent with hard limits. Buyers, or their AI agents, negotiate with it, and PayPal settles the deal instantly.* (Don't claim "safe for both sides" or escrow: PayPal protection for local second-hand sales has conditions.)
 
 **Hackathon:** Build What's Next with PayPal and AI (Devpost). Submission due **Nov 12, 2026**. Confirm the exact time and time zone on the Devpost page. Target submission: **Nov 11**.
