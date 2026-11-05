@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Checkout from "./Checkout";
+import DefensePanel from "./DefensePanel";
 
 type Msg = { role: "BUYER" | "SELLER_AGENT" | "SELLER" | "SYSTEM"; content: string };
 type Snap = { status: string; agreedCents: number | null; messages: Msg[] };
@@ -62,6 +63,7 @@ export default function Chat({ slug, currency }: { slug: string; currency: strin
 
   const closed = ["PAID", "DECLINED", "EXPIRED"].includes(snap.status);
   return (
+    <div className="space-y-2">
     <div className="flex h-[28rem] flex-col rounded border bg-white">
       <div className="flex-1 space-y-2 overflow-y-auto p-3 text-sm">
         {snap.messages.length === 0 && <p className="text-slate-400">Say hi, or make an offer.</p>}
@@ -85,6 +87,8 @@ export default function Chat({ slug, currency }: { slug: string; currency: strin
         <input value={text} onChange={(e) => setText(e.target.value)} disabled={busy || closed || snap.status === "AGREED"} maxLength={1000} placeholder="Type a message or offer…" className="flex-1 rounded border px-3 py-2 text-sm disabled:bg-slate-50" />
         <button disabled={busy || closed || snap.status === "AGREED"} className="rounded bg-slate-900 px-4 py-2 text-sm text-white disabled:opacity-50">{busy ? "…" : "Send"}</button>
       </form>
+    </div>
+    <DefensePanel negotiationId={id} />
     </div>
   );
 }
