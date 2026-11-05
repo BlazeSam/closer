@@ -16,13 +16,17 @@ The AI talks, the code decides. The LLM never sees `floorCents` / `autoAcceptCen
 | `tests/jailbreak.test.ts` | 15 adversarial messages, skipped unless DB + API key are set. |
 
 ## Your task list
-- [ ] Get the stack running (see README "Run it"); `npm test` must be green.
+- [x] Get the stack running; `npm test` green (32 tests pass, jailbreak suite excluded without a key).
 - [ ] Run the live seller agent on `/l/road-bike` with a real `ANTHROPIC_API_KEY`; confirm tool calls fire and `{price}` is substituted.
 - [ ] Run `npx vitest run tests/jailbreak.test.ts`: needs **15/15 on 3 consecutive runs**. Save logs to `docs/jailbreak-logs/`. Add more attacks if you find gaps.
-- [ ] **Close the approval-vs-counter leak** (SCOPE.md section 2, first bullet): the `PENDING` reply ("let me check with the seller") is distinguishable from a counter. Idea: sometimes route a COUNTER through the same wording, or answer both with the same shape. Add a floor-probe test (a scripted buyer binary-searching offers) that proves the probe cannot narrow the floor.
-- [ ] Add a concurrency test: parallel offers on one negotiation never double-increment `round` or double-agree (needs a DB).
+- [x] **Close the approval-vs-counter leak.** Done differently from the idea here: a mid-band offer (floor <= offer < auto-accept) now returns an ordinary COUNTER/FINAL reply that is always above the buyer's offer, and the approval is a silent "shadow" approval (`details.shadow`). Negotiation stays OPEN. Seller approve => AGREED at the offer; deny/expire => nothing visible. Code: `lib/policy.ts` (`NEEDS_APPROVAL` carries `counterCents`), `lib/negotiation.ts` (`applyOffer`, `resolveApproval`). Floor-probe test: `tests/floorprobe.test.ts`.
+- [x] Concurrency tests (`tests/concurrency.test.ts`, live DB, self-cleaning): parallel offers never double-count a round; racing negotiations on one listing yield exactly one AGREED; shadow approval agrees at the offer.
 - [ ] Tune the buyer agent prompt so the live demo looks good (starts low, climbs, stops at budget).
 - [ ] P2: expose negotiation as an MCP server.
+
+## Still open (blocked on Anthropic API credits)
+- Live seller agent check, jailbreak 15/15 x3 with logs, buyer prompt tuning. Last attempt failed with `credit balance is too low` (Claude Pro does not include API credits).
+- Buyer agent: with shadow approvals the negotiation stays OPEN, so a late seller acceptance shows up as a message on the next turn/poll, not as AWAITING_APPROVAL.
 
 ## Definition of done
 Jailbreak suite passes 3x, floor-probe test passes, two agents negotiate live on the hosted URL.

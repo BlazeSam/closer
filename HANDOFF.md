@@ -17,11 +17,11 @@ Next.js 15.5 App Router, TS 5 (NOT 7), Tailwind v4, Prisma 6 + Neon Postgres, Ve
 - Heredocs flaky in bash tool; use Write tool.
 - Git push uses repo-local helper `!gh auth git-credential` (BlazeSam). Global cached cred is another account; don't touch.
 
-## State (all pushed, HEAD 06e6e57, tree clean)
+## State (pushed, HEAD 1732d41 + docs update)
 Verified end to end on real Neon + PayPal sandbox: negotiate via agent API, seller approve, order, buyer pay, capture, negotiation PAID, listing SOLD (captureId 44U25789H41433727). No floor/auto leak in responses. 26 tests pass, 1 skipped (jailbreak suite).
 - `.env` has `CURRENCY=CAD` (prices show "CA$"). Works; keep unless wanting USD (then reseed).
 - road-bike listing is now SOLD. Reseed to reactivate: `npm run seed`.
-- Dev server: `CLOSER_NO_DELAY=1 npx next dev -p 3000` (may still be running; port 3000).
+- Dev server: port 3000 on this machine is ANOTHER project (CalenDue). Use `CLOSER_NO_DELAY=1 APP_URL=http://localhost:3100 npx next dev -p 3100`.
 - Spike order 1JL713278S045893V (USD 20) uncaptured; ignore.
 - `reviveForCheckout` in `lib/negotiation.ts` revives EXPIRED deals at checkout if listing still free (called in order + capture routes).
 
@@ -55,10 +55,19 @@ Verified end to end on real Neon + PayPal sandbox: negotiate via agent API, sell
 **Live verification (Neon + PayPal sandbox)**
 - Lowball -> counters CA$220, 203, 192. CA$180 offer -> AWAITING_APPROVAL -> seller approved -> AGREED -> PayPal order CA$180.00 -> buyer approved -> captured -> PAID, listing SOLD. No floor/auto value in any response.
 
+## Done since (session 2)
+- Leak fixed via silent shadow approvals (see `docs/PERSON_A_agents-and-policy.md`). Added `tests/floorprobe.test.ts` and `tests/concurrency.test.ts` (live DB). 32 tests pass.
+- All page routes return 200 on a dev server; visual walkthrough NOT done (browser screenshots failed).
+- Prize list reviewed: no design prize; Design is a judging criterion (complete coherent product). Most Impactful ($5k) not yet in SCOPE targets.
+
+## Product concerns raised (decide before building)
+- Landing page confusing (demo data, no explanation). Listing form needs price explanations.
+- "Paste your link into Marketplace/Craigslist" is unreliable (platform link rules, in-app chat). Options: own-channel sellers, paste/copilot mode, Craigslist relay-email via user inbox, draft-only browser extension.
+
 ## Not done yet
 1. `ANTHROPIC_API_KEY` missing in `.env`. Add it, then `npx vitest run tests/jailbreak.test.ts` (need 15/15, three runs). LLM path is untested live.
 2. Browser UI never walked through: `/l/film-camera`, `/dashboard`, `/sell/new`, `/agent-buyer`, `/pay/[id]`.
-3. Leak: NEEDS_APPROVAL reply ("let me check with the seller") reads differently from counters, so buyer can infer floor <= offer < auto. Make timing/wording indistinguishable + add floor-probe test.
+3. (done) leak fix + floor-probe test.
 4. PayPal webhook `POST /api/paypal/webhook` (`PAYMENT.CAPTURE.COMPLETED`, verify signature, idempotent, needs `PAYPAL_WEBHOOK_ID`).
 5. Read-only Agent Toolkit dashboard panel (`get_order`, `list_transactions`, sandbox). Keeps "Best Use of PayPal + AI" claim true.
 6. Deploy to Render (`render.yaml`). Set LLM provider spend cap before public URL.
