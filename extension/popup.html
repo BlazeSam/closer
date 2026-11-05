@@ -1,0 +1,32 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Closer</title>
+<style>
+  body { width: 300px; margin: 0; padding: 12px; font: 13px system-ui; color: #0f172a; }
+  label { display: block; margin-top: 10px; font-weight: 600; }
+  input[type=text], input[type=password] { width: 100%; box-sizing: border-box; padding: 5px 6px; margin-top: 3px; }
+  .row { display: flex; gap: 6px; align-items: center; margin-top: 10px; }
+  .row label { margin: 0; }
+  small { color: #475569; display: block; margin-top: 3px; font-weight: 400; }
+  button { margin-top: 12px; padding: 6px 10px; }
+  #status { margin-top: 8px; color: #047857; }
+</style>
+<h3 style="margin:0">Closer reply drafter</h3>
+<label>Pairing token
+  <input id="token" type="password" autocomplete="off" placeholder="clsr_...">
+  <small id="paired"></small>
+</label>
+<label>Listing slug
+  <input id="slug" type="text" placeholder="film-camera">
+  <small>The part after /l/ in your listing link.</small>
+</label>
+<label>Closer URL
+  <input id="appUrl" type="text">
+</label>
+<div class="row">
+  <input id="auto" type="checkbox"><label for="auto">Auto-send replies</label>
+</div>
+<small>Off: the reply is inserted as a draft and you press send. On: it is sent without you checking it.</small>
+<button id="save">Save</button> <button id="forget">Forget token</button>
+<div id="status"></div>
+<script src="popup.js"></script>

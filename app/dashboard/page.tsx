@@ -24,6 +24,51 @@ const cols: ColDef<Row>[] = [
   { field: "updatedAt", headerName: "Last activity", valueFormatter: (p) => new Date(p.value).toLocaleTimeString(), width: 120 },
 ];
 
+// Mints a pairing token for the browser extension. The server returns the plaintext once; only a hash is stored.
+function PairExtension() {
+  const [token, setToken] = useState<string>();
+  const [err, setErr] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  async function mint() {
+    setErr("");
+    setCopied(false);
+    const r = await fetch("/api/seller/tokens", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ label: "browser extension" }) });
+    if (r.ok) setToken((await r.json()).token);
+    else setErr("Could not create a token.");
+  }
+
+  return (
+    <section className="rounded border bg-white p-3 text-sm">
+      <h2 className="mb-1 font-semibold">Pair a browser extension</h2>
+      <p className="mb-2 text-slate-600">The extension drafts replies in your buyer chats. It uses a pairing token, never your password.</p>
+      <button onClick={mint} className="rounded bg-slate-900 px-3 py-1 text-white">{token ? "Create another token" : "Create pairing token"}</button>
+      {err && <p className="mt-2 text-red-600">{err}</p>}
+      {token && (
+        <div className="mt-3 space-y-2">
+          <div className="flex gap-2">
+            <input readOnly value={token} onFocus={(e) => e.currentTarget.select()} className="flex-1 rounded border bg-slate-50 px-2 py-1 font-mono text-xs" />
+            <button
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(token);
+                  setCopied(true);
+                } catch {
+                  setErr("Copy failed. Select the token and copy it by hand.");
+                }
+              }}
+              className="rounded border px-3 py-1"
+            >
+              {copied ? "Copied" : "Copy"}
+            </button>
+          </div>
+          <p className="rounded bg-amber-100 px-2 py-1 text-amber-900">Copy it now. This token will not be shown again. If you lose it, create a new one.</p>
+        </div>
+      )}
+    </section>
+  );
+}
+
 function Dashboard() {
   const [rows, setRows] = useState<Row[]>([]);
   const [approvals, setApprovals] = useState<Approval[]>([]);
@@ -51,6 +96,8 @@ function Dashboard() {
 
   return (
     <div className="space-y-6">
+      <PairExtension />
+
       <section>
         <h2 className="mb-2 font-semibold">Approvals {approvals.length > 0 && <span className="rounded-full bg-amber-200 px-2 text-xs">{approvals.length}</span>}</h2>
         {approvals.length === 0 && <p className="text-sm text-slate-500">Nothing waiting on you.</p>}
