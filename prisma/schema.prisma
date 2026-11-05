@@ -54,9 +54,23 @@ model Seller {
   name     String
   email    String
   listings Listing[]
+  tokens   SellerToken[]
 }
 
 // Public fields only. Private prices live in ListingPrivate.
+// Pairing credential for the browser extension. Only the sha256 hash is stored; the plaintext
+// is shown to the seller once. Never ship SELLER_PASSWORD to the extension.
+model SellerToken {
+  id         String    @id @default(cuid())
+  hash       String    @unique
+  sellerId   String
+  seller     Seller    @relation(fields: [sellerId], references: [id])
+  label      String    @default("")
+  lastUsedAt DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+}
+
 model Listing {
   id          String         @id @default(cuid())
   slug        String         @unique

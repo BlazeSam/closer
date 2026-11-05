@@ -27,7 +27,8 @@ The PayPal order amount is set **server-side from `Negotiation.agreedCents`**, n
 - [ ] **Agent Toolkit, read-only panel on the dashboard** (`get_order`, `list_transactions` via `@paypal/agent-toolkit`, sandbox). This keeps the "Best Use of PayPal + AI" claim true even if the full copilot is cut.
 - [ ] **Confirm PayPal Invoicing is enabled on the sandbox account** before anyone builds on it.
 - [ ] `lib/paypalInvoice.ts`: create + send an invoice for `Negotiation.agreedCents` (amount from the DB, never the client). Webhook `INVOICING.INVOICE.PAID` marks PAID + SOLD, idempotent, reusing the verify-then-mark logic.
-- [ ] `SellerToken` table + generate-on-dashboard, for extension pairing. Never ship `SELLER_PASSWORD` to the extension.
+- [x] `SellerToken` table (sha256 hash stored, plaintext shown once, revocable) + `POST /api/seller/tokens` to mint. Extension pairing never sees `SELLER_PASSWORD`. **Dashboard UI to mint/revoke is still TODO.**
+- [x] `POST /api/extension/reply` ({token, channel, threadId, listingSlug, buyerMessage}) -> same `handleTurn`. Token-scoped: rejects bad/revoked tokens and listings owned by another seller. Rate limited 120/min per token. Tests in `tests/extension.test.ts`.
 - [ ] Deal-agreed and paid emails via Resend (`RESEND_API_KEY`). Plain text, no campaign tooling.
 - [ ] Stretch, after everything: PayPal Pay Later buttons on the hosted checkout. Verify CAD/sandbox availability before it goes in the video.
 - [ ] P1: seller copilot with confirm-before-refund, take-over button.

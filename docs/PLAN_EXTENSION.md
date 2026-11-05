@@ -47,7 +47,7 @@ and move money through PayPal's own surface (invoice).
 
 Each step ships on its own. Stop at the deadline, not mid-step.
 
-### 1. Thread-aware negotiations (backend, no UI)
+### 1. Thread-aware negotiations (backend, no UI) -- DONE (ccd36e7)
 Negotiations currently key off a web session. An extension thread needs its own identity.
 
 - `Negotiation`: add `channel` (`WEB` | `FB_MARKETPLACE` | `KIJIJI` | `MOCK`, default `WEB`) and
@@ -56,7 +56,7 @@ Negotiations currently key off a web session. An extension thread needs its own 
 - Find-or-create by `(listingId, externalThreadId)`; everything downstream (`handleTurn`,
   `applyOffer`, shadow approvals, dashboard) is unchanged.
 
-### 2. Extension pairing + reply endpoint
+### 2. Extension pairing + reply endpoint -- DONE (see below; dashboard UI for minting still open)
 - `SellerToken` table: random token, `sellerId`, `createdAt`, `revokedAt?`. The seller generates
   one on the dashboard and pastes it into the extension. **Never ship `SELLER_PASSWORD` to the
   extension.**
