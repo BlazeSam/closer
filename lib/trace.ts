@@ -61,6 +61,16 @@ export function redactForBuyer(events: RawEvent[], currency: string): TraceEntry
       case "PAYPAL_CAPTURED":
         out.push({ at, kind: "payment", label: "Payment captured and verified against the agreed price" });
         break;
+      case "PAYPAL_INVOICE_SENT":
+        // No email here: the buyer's address is the seller's data, not part of the public trace.
+        out.push({ at, kind: "payment", label: "PayPal invoice sent for the agreed price", detail: "The buyer pays on paypal.com, not on a page we host." });
+        break;
+      case "PAYPAL_INVOICE_PAID":
+        out.push({ at, kind: "payment", label: "Invoice paid and verified against the agreed price" });
+        break;
+      case "PAYPAL_INVOICE_MISMATCH":
+        out.push({ at, kind: "payment", label: "Invoice payment rejected: it did not match the agreed price" });
+        break;
       case "PAYPAL_CAPTURE_MISMATCH":
         out.push({ at, kind: "payment", label: "Capture rejected: the captured amount did not match the agreed price" });
         break;

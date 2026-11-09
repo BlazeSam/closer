@@ -1,6 +1,5 @@
 import { prisma } from "../../../../../../lib/db";
-import { reviveForCheckout } from "../../../../../../lib/negotiation";
-import { fmt } from "../../../../../../lib/replies";
+import { markPaid, reviveForCheckout } from "../../../../../../lib/negotiation";
 import { captureOrder, verifyCapture } from "../../../../../../lib/paypal";
 
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -25,11 +24,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
     await prisma.auditEvent.create({ data: { negotiationId: id, type: "PAYPAL_CAPTURE_MISMATCH", payload: { reason: v.reason, orderId: n.paypalOrderId } } });
     return Response.json({ error: `payment verification failed: ${v.reason}` }, { status: 502 });
   }
-  await prisma.$transaction([
-    prisma.negotiation.updateMany({ where: { id, status: "AGREED" }, data: { status: "PAID", paypalCaptureId: v.captureId, paidAt: new Date(), version: { increment: 1 } } }),
-    prisma.listing.update({ where: { id: n.listing.id }, data: { status: "SOLD", reservedUntil: null } }),
-    prisma.message.create({ data: { negotiationId: id, role: "SYSTEM", content: `Payment received: ${fmt(n.agreedCents, n.listing.currency)}. Thanks! The seller will be in touch.` } }),
-    prisma.auditEvent.create({ data: { negotiationId: id, type: "PAYPAL_CAPTURED", payload: { captureId: v.captureId, agreedCents: n.agreedCents } } }),
-  ]);
+  // Shared with the invoice webhook so "paid" means one thing in both paths.
+  await markPaid({ negotiationId: id, captureId: v.captureId, via: "CAPTURE" });
   return Response.json({ ok: true, captureId: v.captureId });
 }

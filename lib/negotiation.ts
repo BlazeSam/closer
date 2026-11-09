@@ -186,3 +186,30 @@ export async function sweep() {
     await prisma.message.create({ data: { negotiationId: id, role: "SYSTEM", content: "This deal expired because payment wasn't completed in time." } });
   }
 }
+
+// Both payment paths end here: the hosted card page (capture) and a PayPal invoice (webhook). One
+// function so they can never drift apart on what "paid" means. Idempotent: the updateMany is
+// conditioned on AGREED, so a replayed webhook or a double capture changes nothing.
+export async function markPaid(p: { negotiationId: string; captureId?: string; invoiceId?: string; via: "CAPTURE" | "INVOICE" }): Promise<"PAID" | "ALREADY" | "NOT_PAYABLE"> {
+  const n = await prisma.negotiation.findUnique({ where: { id: p.negotiationId }, include: { listing: { select: { id: true, currency: true } } } });
+  if (!n) return "NOT_PAYABLE";
+  if (n.status === "PAID") return "ALREADY";
+  if (n.status !== "AGREED" || n.agreedCents == null) return "NOT_PAYABLE";
+  const updated = await prisma.negotiation.updateMany({
+    where: { id: p.negotiationId, status: "AGREED" },
+    data: {
+      status: "PAID",
+      paidAt: new Date(),
+      version: { increment: 1 },
+      ...(p.captureId ? { paypalCaptureId: p.captureId } : {}),
+      ...(p.invoiceId ? { paypalInvoiceId: p.invoiceId } : {}),
+    },
+  });
+  if (updated.count === 0) return "ALREADY"; // another request won the race
+  await prisma.$transaction([
+    prisma.listing.update({ where: { id: n.listing.id }, data: { status: "SOLD", reservedUntil: null } }),
+    prisma.message.create({ data: { negotiationId: p.negotiationId, role: "SYSTEM", content: `Payment received: ${fmt(n.agreedCents, n.listing.currency)}. Thanks! The seller will be in touch.` } }),
+    prisma.auditEvent.create({ data: { negotiationId: p.negotiationId, type: p.via === "INVOICE" ? "PAYPAL_INVOICE_PAID" : "PAYPAL_CAPTURED", payload: { captureId: p.captureId, invoiceId: p.invoiceId, agreedCents: n.agreedCents } } }),
+  ]);
+  return "PAID";
+}

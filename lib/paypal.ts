@@ -68,3 +68,97 @@ export function verifyCapture(c: Capture, agreedCents: number, currency: string)
   if (cap.amount.value !== centsToValue(agreedCents)) return { ok: false, reason: "amount mismatch" };
   return { ok: true, captureId: cap.id };
 }
+
+// ---------------------------------------------------------------------------
+// Invoicing. The seller sends a PayPal invoice and the buyer pays on paypal.com.
+// This exists because asking a Marketplace buyer to follow a link to a site they
+// have never heard of, to type card details, is exactly what a scam looks like.
+// The amount always comes from Negotiation.agreedCents, never from the chat.
+// ---------------------------------------------------------------------------
+
+export type PayPalInvoice = {
+  id: string;
+  status: string;
+  detail?: { reference?: string; currency_code?: string };
+  amount?: { currency_code: string; value: string };
+  links?: { rel: string; href: string }[];
+};
+
+async function get<T>(path: string): Promise<T> {
+  const res = await fetch(`${base()}${path}`, { headers: { Authorization: `Bearer ${await accessToken()}` } });
+  const text = await res.text();
+  if (!res.ok) throw new Error(`PayPal ${path} failed: ${res.status} ${text}`);
+  return JSON.parse(text) as T;
+}
+
+// The negotiation id travels in detail.reference so a webhook can be mapped back to it without
+// trusting anything the payer typed.
+export function invoiceDraft(p: { agreedCents: number; currency: string; negotiationId: string; title: string; buyerEmail: string; invoiceNumber: string; sellerEmail?: string }) {
+  return {
+    detail: {
+      invoice_number: p.invoiceNumber,
+      reference: p.negotiationId,
+      currency_code: p.currency,
+      note: "Agreed with the seller's Closer agent.",
+      payment_term: { term_type: "DUE_ON_RECEIPT" },
+    },
+    invoicer: p.sellerEmail ? { email_address: p.sellerEmail } : undefined,
+    primary_recipients: [{ billing_info: { email_address: p.buyerEmail } }],
+    items: [
+      {
+        name: p.title.slice(0, 200),
+        quantity: "1",
+        unit_amount: { currency_code: p.currency, value: centsToValue(p.agreedCents) },
+      },
+    ],
+  };
+}
+
+export const nextInvoiceNumber = () => call<{ invoice_number: string }>("/v2/invoicing/generate-next-invoice-number", undefined, `inv-num-${Date.now()}`);
+// Creating an invoice returns only a self link, NOT the invoice object, so the id has to be taken
+// out of the href. Pure and tested, because getting it wrong sends PayPal "/invoices/undefined/send".
+export function invoiceIdFromHref(href?: string): string | undefined {
+  return /\/invoicing\/invoices\/([A-Za-z0-9-]+)\/?$/.exec(href ?? "")?.[1];
+}
+
+export async function createInvoice(draft: unknown, requestId: string): Promise<{ id: string }> {
+  const r = await call<{ id?: string; href?: string }>("/v2/invoicing/invoices", draft, requestId);
+  const id = r.id ?? invoiceIdFromHref(r.href);
+  if (!id) throw new Error(`PayPal create invoice returned no id: ${JSON.stringify(r).slice(0, 200)}`);
+  return { id };
+}
+export const sendInvoice = (invoiceId: string) => call<{ href?: string }>(`/v2/invoicing/invoices/${invoiceId}/send`, { send_to_recipient: true }, `send-${invoiceId}`);
+export const getInvoice = (invoiceId: string) => get<PayPalInvoice>(`/v2/invoicing/invoices/${invoiceId}`);
+
+// Pure, unit tested. Mirrors verifyCapture: the invoice must be PAID, for the agreed amount, in the
+// agreed currency, and must belong to THIS negotiation.
+export function verifyInvoicePaid(inv: PayPalInvoice, agreedCents: number, currency: string, negotiationId: string): { ok: true } | { ok: false; reason: string } {
+  if (inv.status !== "PAID" && inv.status !== "MARKED_AS_PAID") return { ok: false, reason: `invoice status ${inv.status}` };
+  if (inv.detail?.reference !== negotiationId) return { ok: false, reason: "invoice belongs to another negotiation" };
+  const amt = inv.amount;
+  if (!amt) return { ok: false, reason: "invoice has no amount" };
+  if (amt.currency_code !== currency) return { ok: false, reason: "currency mismatch" };
+  if (amt.value !== centsToValue(agreedCents)) return { ok: false, reason: "amount mismatch" };
+  return { ok: true };
+}
+
+// PayPal verifies its own signature for us, so a forged webhook cannot be replayed at us.
+export async function webhookIsGenuine(headers: Headers, rawBody: string, webhookId: string): Promise<boolean> {
+  const need = (h: string) => headers.get(h) ?? "";
+  const body = {
+    auth_algo: need("paypal-auth-algo"),
+    cert_url: need("paypal-cert-url"),
+    transmission_id: need("paypal-transmission-id"),
+    transmission_sig: need("paypal-transmission-sig"),
+    transmission_time: need("paypal-transmission-time"),
+    webhook_id: webhookId,
+    webhook_event: JSON.parse(rawBody),
+  };
+  if (!body.transmission_id || !body.transmission_sig) return false;
+  try {
+    const r = await call<{ verification_status: string }>("/v1/notifications/verify-webhook-signature", body, `verify-${body.transmission_id}`);
+    return r.verification_status === "SUCCESS";
+  } catch {
+    return false;
+  }
+}

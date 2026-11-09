@@ -116,6 +116,10 @@ model Negotiation {
   agreedExpiresAt     DateTime?
   paypalOrderId       String?
   paypalCaptureId     String?
+  // Invoice path: the buyer pays on paypal.com instead of a page we host, which is the whole point
+  // of it. Email is supplied by the SELLER when they send the invoice, never by the buyer in chat.
+  paypalInvoiceId     String?
+  buyerEmail          String?
   paidAt              DateTime?
   version             Int               @default(0)
   messages            Message[]
