@@ -44,6 +44,13 @@ export function redactForBuyer(events: RawEvent[], currency: string): TraceEntry
           detail: "The guard blocks any amount the policy did not authorise.",
         });
         break;
+      case "REPLY_CHECKED":
+        out.push(
+          p.source === "policy"
+            ? { at, kind: "policy", label: "Reply written by the policy, not the model" }
+            : { at, kind: "guard", label: "Model reply checked against the policy", detail: "No amount the policy had not authorised." },
+        );
+        break;
       case "LLM_FAILED":
         // The provider's error text can name the provider, the key state or internal URLs. Dropped.
         out.push({ at, kind: "model", label: "Model unavailable; the reply came from the policy instead", detail: "Negotiation continues without the model." });

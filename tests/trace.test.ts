@@ -68,3 +68,17 @@ describe("buyer trace redaction", () => {
     expect(INVARIANTS.length).toBeGreaterThanOrEqual(3);
   });
 });
+
+// The panel looked broken on a clean refusal, because only FAILED checks were traced.
+describe("per-turn check entry", () => {
+  it("shows the check and leaks no amount", () => {
+    const ev = (source: string) => [{ type: "REPLY_CHECKED", payload: { source }, createdAt: new Date() }];
+    const model = redactForBuyer(ev("model"), "CAD");
+    expect(model).toHaveLength(1);
+    expect(model[0].kind).toBe("guard");
+    const policy = redactForBuyer(ev("policy"), "CAD");
+    expect(policy[0].kind).toBe("policy");
+    const text = [...model, ...policy].map((e) => `${e.label} ${e.detail ?? ""}`).join(" ");
+    expect(text).not.toMatch(/[0-9$]/);
+  });
+});
