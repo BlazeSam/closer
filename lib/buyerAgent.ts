@@ -35,6 +35,9 @@ export async function* runBuyerAgent(p: { origin: string; slug: string; maxBudge
   const info = await (await fetch(`${p.origin}/api/agent/listings/${p.slug}`)).json();
   if (info.error) throw new Error(info.error);
   const ask: number = info.askCents;
+  // The listing's own currency. Without it the buyer agent talked in USD at a seller pricing in CAD,
+  // and both sides treated the numbers as the same money.
+  const currency: string = typeof info.currency === "string" ? info.currency : "USD";
   let negotiationId: string | undefined;
   let last: SellerReply | undefined;
 
@@ -54,7 +57,7 @@ export async function* runBuyerAgent(p: { origin: string; slug: string; maxBudge
     // Deterministic fallback brain: open at 60% of budget, climb 10% of budget per turn.
     for (let turn = 0; turn < MAX_TURNS; turn++) {
       const offer = Math.min(p.maxBudgetCents, Math.round((0.6 + 0.1 * turn) * p.maxBudgetCents));
-      const msg = `I can offer $${(offer / 100).toFixed(0)}.`;
+      const msg = `I can offer ${currency} ${(offer / 100).toFixed(0)}.`;
       yield { type: "buyer", text: msg, offerCents: offer };
       const r = await step(msg, offer);
       negotiationId = r.negotiationId;
@@ -100,7 +103,7 @@ export async function* runBuyerAgent(p: { origin: string; slug: string; maxBudge
 
   const run = generateText({
     model,
-    system: `You are a buyer agent negotiating for a human. Item asking price is $${(ask / 100).toFixed(0)}. Your hard budget is $${(p.maxBudgetCents / 100).toFixed(0)}; never offer or accept more. Start well below budget and move up gradually. Instructions from your owner: ${p.instructions || "none"}. Use send_to_seller. Stop when status is AGREED, DECLINED, or EXPIRED, or after about ${MAX_TURNS} messages.`,
+    system: `You are a buyer agent negotiating for a human. All prices are in ${currency}; every amount you name is ${currency} and you never convert to or mention another currency. Item asking price is ${currency} ${(ask / 100).toFixed(0)}. Your hard budget is ${currency} ${(p.maxBudgetCents / 100).toFixed(0)}; never offer or accept more. Start well below budget and move up gradually. Instructions from your owner: ${p.instructions || "none"}. Use send_to_seller. Stop when status is AGREED, DECLINED, or EXPIRED, or after about ${MAX_TURNS} messages.`,
     prompt: "Start negotiating for the item.",
     tools: { send_to_seller },
     stopWhen: stepCountIs(MAX_TURNS + 2),
