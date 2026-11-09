@@ -37,3 +37,16 @@ describe("verifyCapture", () => {
   it("rejects wrong currency", () => expect(verifyCapture(cap("200.00", "EUR"), 20000, "USD").ok).toBe(false));
   it("rejects incomplete", () => expect(verifyCapture(cap("200.00", "USD", "PENDING"), 20000, "USD").ok).toBe(false));
 });
+
+// Regression: a missing price used to erase the placeholder, producing "I can't accept  for this item."
+describe("placeholder substitution", () => {
+  it("never leaves a hole where a price belongs", async () => {
+    const { substitute } = await import("../lib/replies");
+    for (const t of ["I can't accept {price} for this item.", "The asking price is {ask}."]) {
+      const out = substitute(t, {}, "CAD");
+      expect(out).not.toMatch(/\s\s|\s\./);
+      expect(out).not.toContain("{");
+    }
+    expect(substitute("{price}", { price: 18000 }, "CAD")).toBe("CA$180");
+  });
+});

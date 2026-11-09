@@ -23,10 +23,13 @@ export function template(o: Outcome): string {
   }
 }
 
+// The model is told to always write {price}, but outcomes like PENDING/INVALID/UNAVAILABLE carry no
+// price. Dropping the placeholder leaves "I can't accept  for this item", so fall back to words.
+// ponytail: fixed wording, not grammar-aware; good enough because the model writes the sentence round it.
 export const substitute = (text: string, v: { price?: number; ask?: number }, currency = "USD") =>
   text
-    .replaceAll("{price}", v.price != null ? fmt(v.price, currency) : "")
-    .replaceAll("{ask}", v.ask != null ? fmt(v.ask, currency) : "");
+    .replaceAll("{price}", v.price != null ? fmt(v.price, currency) : "that amount")
+    .replaceAll("{ask}", v.ask != null ? fmt(v.ask, currency) : "the asking price");
 
 export function replyFor(o: Outcome, ask: number, currency: string): string {
   const price = "priceCents" in o ? o.priceCents : undefined;
