@@ -80,17 +80,37 @@ when Facebook's DOM shifts.
 Assume the Facebook DOM will break. Keep selectors in one file with a comment saying so, and
 make the mock page the thing CI and the demo rely on.
 
-### 5. PayPal invoice path
-- `lib/paypalInvoice.ts`: create + send an invoice for `Negotiation.agreedCents`. Same rule as
-  Orders: **the amount comes from the DB, never from the LLM or the client.**
-- The agent asks for the buyer's email in chat when the channel is not `WEB`.
-- Webhook: `INVOICING.INVOICE.PAID` marks PAID and the listing SOLD, reusing the existing
-  verify-then-mark logic. Keep it idempotent.
-- Confirm Invoicing is enabled on the sandbox account **before** building on it.
+### 5. PayPal invoice path -- DONE (b536691)
+Built in `lib/paypal.ts` rather than a separate file, next to the Orders code it mirrors.
 
-### 6. Email notification
+- Invoicing **is** enabled on the sandbox; confirmed with read-only probes before building.
+- `POST /api/negotiations/[id]/paypal/invoice` — SELLER-authenticated. The amount comes from
+  `Negotiation.agreedCents` and the buyer's email is typed by the seller, so neither comes from
+  the chat. The buyer's email is NOT asked for in chat: a buyer-supplied address would let a
+  buyer redirect someone else's invoice.
+- The negotiation id travels in `detail.reference`, which is how the webhook maps an invoice back
+  to a deal without trusting anything the payer supplied.
+- `POST /api/paypal/webhook` — verifies the signature with PayPal before reading the body, then
+  **re-fetches the invoice from PayPal** rather than believing the amount in the event. Forged and
+  unsigned webhooks were both verified as rejected.
+- `markPaid()` in `lib/negotiation.ts` is shared by the capture route and the webhook, so the two
+  paths cannot drift on what "paid" means. Idempotent via a status-guarded `updateMany`: a replay
+  returns `ALREADY`.
+- Proved end to end on the sandbox: invoice created and sent, payment recorded, verified,
+  negotiation `PAID`, listing `SOLD`, replay a no-op.
+
+**Still open:** `PAYPAL_WEBHOOK_ID` is unset, because registering a webhook needs a public URL.
+Until it is set the route returns 503 rather than trusting an unverified event. Set it right after
+deploy, then send a test event from the PayPal dashboard.
+
+Gotcha worth keeping: PayPal's create-invoice returns **only a self link**, not the invoice
+object. The id has to be parsed out of the href (`invoiceIdFromHref`), or you request
+`/v2/invoicing/invoices/undefined/send`.
+
+### 6. Email notification -- NOT BUILT
 Resend, on deal agreed and on paid. Needs `RESEND_API_KEY` in env. One plain-text template;
-no campaign tooling.
+no campaign tooling. Cut for now: the invoice itself already emails the buyer from PayPal, so
+this only adds a seller-side notification.
 
 ### 7. Stretch: Pay Later
 Pay Later buttons render through the JS SDK already used in `components/Checkout.tsx`, so the
@@ -178,3 +198,37 @@ the default model reads photos well enough are all unknown until credits exist.
 - Is Invoicing enabled on our PayPal sandbox account?
 - Pay Later availability for CAD / sandbox.
 - Craigslist and Kijiji terms on automated replies, if we extend past Facebook.
+
+
+## State on 2026-11-09 (overnight session)
+
+Hackathon closes Thursday 12 Nov.
+
+### Done since the last update
+- **Credits landed**, so everything model-dependent ran for the first time.
+- **Jailbreak suite was passing against a SOLD listing** and therefore testing nothing: `applyOffer`
+  returned UNAVAILABLE before the policy ran. Fixed, plus a negative control that fails the suite if
+  the listing is not sellable. Real 15/15 on three consecutive runs, logs in `docs/jailbreak-logs/`.
+- **Photo-to-listing ran for the first time.** Vision reads the image and prices conservatively.
+- **Concessions are now earned.** The ladder advanced on round count, so a buyer who never raised
+  their offer still walked the price to the floor. A real transcript showed CA$300 to CA$221 against
+  a floor of CA$220 while the buyer's offers went 100, 150, 125.
+- **The agent stopped retracting its own prices** ("those didn't come from the pricing system"),
+  which was telling buyers there were internal rules it had broken.
+- **PayPal invoice path** (step 5 above).
+- **Agent-vs-agent is now the landing page**, with `/api/demo/reset` so it is repeatable.
+- Production build passes. `APP_URL` was pointing at port 3000, another project on this machine.
+
+### Left, in order
+1. **Deploy.** Nothing else scores without a clickable URL. Then set `PAYPAL_WEBHOOK_ID`.
+2. **Load the extension in real Chrome** (step 4 has still never been done) and test on
+   `/demo/marketplace`.
+3. **Demo video + Devpost copy.** Lead with the landing-page duel.
+4. MCP server only if 1-3 land early: it is worthless until deployed, since a stdio server means
+   every judge would have to clone the repo.
+
+### Known rough edges
+- Three junk `laptop-*` listings from earlier testing are still in the database and show on the
+  landing page. They need deleting before any recording.
+- Tests still write to, and `deleteMany` from, the **live Neon database**.
+- The Facebook selectors remain unverified guesses, as step 4 always said.
