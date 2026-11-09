@@ -59,7 +59,7 @@ export async function applyOffer(negotiationId: string, offerCents: number, offe
 
     const d = evaluateOffer(
       { askCents: l.askCents, floorCents: l.private.floorCents, autoAcceptCents: l.private.autoAcceptCents, currency: l.currency },
-      { round: n.round, lastCounterCents: n.lastCounterCents, seed: n.id },
+      { round: n.round, lastCounterCents: n.lastCounterCents, seed: n.id, prevBuyerOfferCents: n.lastBuyerOfferCents },
       offerCents,
       { maxRounds: env().MAX_ROUNDS, offerCurrency },
     );
@@ -162,7 +162,7 @@ export async function resolveApproval(approvalId: string, approve: boolean, repl
     if (!l.private) throw new Error("listing missing private prices");
     const price = counterFor(
       { askCents: l.askCents, floorCents: l.private.floorCents, autoAcceptCents: l.private.autoAcceptCents, currency: l.currency },
-      { round: n.round, lastCounterCents: n.lastCounterCents, seed: n.id },
+      { round: n.round, lastCounterCents: n.lastCounterCents, seed: n.id, prevBuyerOfferCents: n.lastBuyerOfferCents },
     );
     await tx.negotiation.update({ where: { id: n.id }, data: { status: "OPEN", lastCounterCents: price, version: { increment: 1 } } });
     await tx.message.create({ data: { negotiationId: n.id, role: "SELLER_AGENT", content: `I checked, and the best I can do is ${fmt(price, l.currency)}.` } });

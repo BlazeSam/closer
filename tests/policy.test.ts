@@ -90,3 +90,45 @@ describe("property: no decision is ever below floor", () => {
     }
   });
 });
+
+// A real buyer transcript walked the price from CA$300 down to CA$221 while never raising their
+// offer above $150: the ladder advanced on every round, so stonewalling alone bought concessions.
+describe("concessions must be bought", () => {
+  const l = { askCents: 30000, floorCents: 22000, autoAcceptCents: 26000, currency: "CAD" };
+
+  it("does not move while the buyer repeats the same offer", () => {
+    let last: number | null = null;
+    let prev: number | null = null;
+    const seen: number[] = [];
+    for (let round = 0; round < 6; round++) {
+      const d = evaluateOffer(l, { round, lastCounterCents: last, seed: "n1", prevBuyerOfferCents: prev }, 10000);
+      const price = "priceCents" in d ? d.priceCents : 0;
+      seen.push(price);
+      last = price;
+      prev = 10000; // the buyer never improves
+    }
+    expect(new Set(seen.slice(1)).size, `counters: ${seen}`).toBe(1);
+    expect(seen[seen.length - 1]).toBeGreaterThan(l.floorCents);
+  });
+
+  it("does not move while the buyer goes backwards", () => {
+    const a = evaluateOffer(l, { round: 1, lastCounterCents: 28000, seed: "n2", prevBuyerOfferCents: 15000 }, 12500);
+    expect("priceCents" in a && a.priceCents).toBe(28000);
+  });
+
+  it("still concedes when the buyer actually moves up", () => {
+    const a = evaluateOffer(l, { round: 1, lastCounterCents: 28000, seed: "n3", prevBuyerOfferCents: 10000 }, 15000);
+    expect("priceCents" in a && a.priceCents).toBeLessThan(28000);
+  });
+
+  it("never drops below the floor however long the buyer grinds", () => {
+    let last: number | null = null;
+    for (let round = 0; round < 40; round++) {
+      const d = evaluateOffer(l, { round, lastCounterCents: last, seed: "n4", prevBuyerOfferCents: round * 100 }, round * 100 + 100);
+      if ("priceCents" in d) {
+        expect(d.priceCents).toBeGreaterThanOrEqual(l.floorCents);
+        last = d.priceCents;
+      }
+    }
+  });
+});

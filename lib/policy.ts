@@ -10,6 +10,7 @@ export type PolicyState = {
   round: number; // buyer offers already evaluated in this negotiation
   lastCounterCents?: number | null;
   seed: string; // negotiation id; makes counter jitter stable per negotiation
+  prevBuyerOfferCents?: number | null; // best/last offer BEFORE the one being evaluated
 };
 
 export type Decision =
@@ -75,7 +76,12 @@ export function evaluateOffer(
   if (s.lastCounterCents != null && offerCents >= s.lastCounterCents) {
     return { type: "ACCEPT", priceCents: s.lastCounterCents };
   }
-  const counter = counterFor(l, s);
+  // A concession has to be bought. The ladder used to advance on every round, so a buyer who just
+  // repeated "too expensive" without ever raising their offer walked the price down to the floor:
+  // the whole negotiation could be ground out by stonewalling. Hold the last counter unless the
+  // buyer actually moved up.
+  const improved = s.prevBuyerOfferCents == null || offerCents > s.prevBuyerOfferCents;
+  const counter = improved || s.lastCounterCents == null ? counterFor(l, s) : Math.max(s.lastCounterCents, l.floorCents);
   // Mid-band: the buyer sees an ordinary counter (never below their own offer), and the seller is asked
   // silently. Otherwise "let me check with the seller" would reveal that floor <= offer < autoAccept.
   if (offerCents >= l.floorCents) {
