@@ -37,3 +37,25 @@ describe("extension wiring", () => {
     expect(read("extension/popup.html")).not.toMatch(/<input[^>]*id="auto"[^>]*checked/);
   });
 });
+
+// A zero rect used to read as inbound, so with auto-send on the agent could answer its own message.
+describe("facebook direction heuristic", () => {
+  const fn = new Function(`${read("extension/selectors.js")}; return closerRectIsInbound;`)() as (
+    m: { left: number; width: number } | null,
+    r: { left: number; width: number; height: number } | null,
+  ) => boolean;
+  const main = { left: 0, width: 1000 };
+
+  it("reads a left-hand message as the buyer and a right-hand one as the seller", () => {
+    expect(fn(main, { left: 10, width: 200, height: 20 })).toBe(true);
+    expect(fn(main, { left: 700, width: 200, height: 20 })).toBe(false);
+  });
+
+  it("never calls an unmeasurable node inbound", () => {
+    for (const r of [{ left: 0, width: 0, height: 0 }, { left: 0, width: 200, height: 0 }, null]) {
+      expect(fn(main, r), JSON.stringify(r)).toBe(false);
+    }
+    expect(fn(null, { left: 10, width: 200, height: 20 })).toBe(false);
+    expect(fn({ left: 0, width: 0 }, { left: 10, width: 200, height: 20 })).toBe(false);
+  });
+});

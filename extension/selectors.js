@@ -24,6 +24,14 @@ const CLOSER_MOCK = {
   send: () => document.querySelector("[data-closer-send]"),
 };
 
+// Pure so it can be tested without a DOM. A hidden, collapsed or not-yet-laid-out node reports a zero
+// rect at 0,0, which lands left of centre and would read as the buyer; with auto-send on the agent
+// would then answer its own message. Unknown direction must mean "not inbound": never reply.
+function closerRectIsInbound(main, r) {
+  if (!main || !r || main.width <= 0 || r.width <= 0 || r.height <= 0) return false;
+  return r.left + r.width / 2 < main.left + main.width / 2;
+}
+
 const CLOSER_FACEBOOK = {
   channel: "FB_MARKETPLACE",
   matches: () => location.hostname === "www.facebook.com" && location.pathname.startsWith("/messages/"),
@@ -34,7 +42,10 @@ const CLOSER_FACEBOOK = {
   isInbound: (el) => {
     const main = document.querySelector('[role="main"]')?.getBoundingClientRect();
     const r = el.getBoundingClientRect();
-    return Boolean(main) && r.left + r.width / 2 < main.left + main.width / 2;
+    // A hidden, collapsed or not-yet-laid-out node reports a zero rect at 0,0, which lands left of
+    // centre and would read as the buyer. With auto-send on, the agent would then answer its own
+    // message. Unknown direction must mean "not inbound": the safe failure is never replying.
+    return closerRectIsInbound(main, r);
   },
   text: (el) => (el.textContent || "").trim(),
   id: () => null,
