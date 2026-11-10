@@ -1,24 +1,26 @@
-# Render blueprint: web service + Postgres. Secrets (sync: false) are set in the Render dashboard.
-databases:
-  - name: closer-db
-    plan: free
-
+# Render blueprint: one web service. Secrets (sync: false) are set in the Render dashboard.
+#
+# No Render Postgres on purpose: free Render Postgres expires 30 days after creation, and the demo
+# has to stay up until judging ends on 15 Dec. DATABASE_URL points at the existing Neon database.
 services:
   - type: web
     name: closer
     runtime: node
     plan: starter # always-on: free tier sleeps and would cold-start mid-demo
-    buildCommand: npm ci && npx prisma generate && npx prisma db push --skip-generate && npm run build
+    # --include=dev: the build needs prisma, tailwind, typescript and tsx, which are devDependencies.
+    # The seed is an upsert, so it is safe on every deploy; it also relists the three demo items.
+    buildCommand: npm ci --include=dev && npx prisma db push --skip-generate && npm run build && npm run seed
     startCommand: npm start
     healthCheckPath: /
     envVars:
-      - { key: DATABASE_URL, fromDatabase: { name: closer-db, property: connectionString } }
-      - { key: PAYPAL_ENVIRONMENT, value: SANDBOX }
-      - { key: CURRENCY, value: USD }
+      - { key: PAYPAL_ENVIRONMENT, value: SANDBOX } # must be upper case; lib/env.ts rejects "sandbox"
+      - { key: CURRENCY, value: CAD } # must match the currency the Neon listings were seeded with
       - { key: AI_PROVIDER, value: anthropic }
+      - { key: DATABASE_URL, sync: false } # Neon connection string
       - { key: PAYPAL_CLIENT_ID, sync: false }
       - { key: PAYPAL_CLIENT_SECRET, sync: false }
-      - { key: NEXT_PUBLIC_PAYPAL_CLIENT_ID, sync: false }
+      - { key: NEXT_PUBLIC_PAYPAL_CLIENT_ID, sync: false } # same value as PAYPAL_CLIENT_ID; read at build time
       - { key: ANTHROPIC_API_KEY, sync: false }
       - { key: SELLER_PASSWORD, sync: false }
-      - { key: APP_URL, sync: false }
+      - { key: APP_URL, sync: false } # the deployed origin, e.g. https://closer.onrender.com, no trailing slash
+      - { key: PAYPAL_WEBHOOK_ID, sync: false } # set after registering the webhook; until then the route returns 503

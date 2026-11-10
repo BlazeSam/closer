@@ -8,7 +8,7 @@ const schema = z.object({
   NEXT_PUBLIC_PAYPAL_CLIENT_ID: z.string().optional(),
   CURRENCY: z.string().length(3).default("USD"),
   AI_PROVIDER: z.enum(["anthropic", "openai"]).default("anthropic"),
-  APP_URL: z.string().default("http://localhost:3000"),
+  APP_URL: z.string().default("http://localhost:3100"),
   SELLER_PASSWORD: z.string().min(1),
   MAX_ROUNDS: z.coerce.number().int().positive().default(6),
   APPROVAL_TTL_MINUTES: z.coerce.number().positive().default(10),
