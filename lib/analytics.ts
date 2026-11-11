@@ -51,7 +51,7 @@ export function computeAnalytics(listings: AListing[], negs: ANeg[]) {
   });
   const perItem = listings.map((l) => {
     const ns = negs.filter((n) => n.listingId === l.id), deals = ns.filter(isDeal);
-    const price = deals.length ? Math.max(...deals.map((n) => n.agreedCents ?? 0)) : Math.max(0, ...ns.map((n) => n.bestOfferCents ?? 0)) || null;
+    const price = deals.length ? Math.max(...deals.map((n) => n.agreedCents ?? 0)) : Math.max(0, ...ns.map((n) => n.bestOfferCents ?? 0).filter((c) => c <= l.askCents)) || null; // ponytail: an offer above asking is a typo ("1150" for 150), not a best offer
     return {
       title: l.title, currency: l.currency, askCents: l.askCents, negotiations: ns.length, priceCents: price, priceIsAgreed: deals.length > 0,
       pctOfAsk: price && l.askCents ? Math.round((price / l.askCents) * 100) : null,

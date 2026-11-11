@@ -21,9 +21,10 @@ describe("analytics", () => {
       { ...base, listingId: "a", channel: "Facebook", status: "PAID", paid: true, agreedCents: 9000, agreedAt: 10 * 60000 },
       { ...base, listingId: "a", channel: "Web chat", status: "OPEN", bestOfferCents: 7000 },
       { ...base, listingId: "b", channel: "Web chat", status: "OPEN", bestOfferCents: 1500 },
+      { ...base, listingId: "b", channel: "Facebook", status: "OPEN", bestOfferCents: 115000 }, // typo offer above asking: ignored
     ]);
     expect(r.totals).toMatchObject({ items: 2, agreedItems: 1, paidItems: 1, sellThroughPct: 50, avgDealPctOfAsk: 90, medianMinutesToDeal: 10, avgRounds: 2 });
-    expect(r.perChannel.find((c) => c.channel === "Facebook")?.sellThroughPct).toBe(100);
+    expect(r.perChannel.find((c) => c.channel === "Facebook")?.sellThroughPct).toBe(50);
     expect(r.perChannel.find((c) => c.channel === "Web chat")?.sellThroughPct).toBe(0);
     expect(r.perItem[0]).toMatchObject({ status: "paid", priceCents: 9000, pctOfAsk: 90, negotiations: 2 });
     expect(r.perItem[1]).toMatchObject({ status: "listed", priceCents: 1500, pctOfAsk: 75 });

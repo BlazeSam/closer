@@ -255,7 +255,7 @@ function AnalyticsPanel() {
         <div className="overflow-x-auto">
           <h3 className="mb-1 font-medium">By where buyers found you</h3>
           <table className="w-full">
-            <thead><tr className="bg-slate-50"><th className={th}>Channel</th><th className={th}>Items</th><th className={th}>Sold or agreed</th><th className={th}>Deal vs asking</th><th className={th}>Time to a deal</th></tr></thead>
+            <thead><tr className="bg-slate-50"><th className={th}>Channel</th><th className={th}>Items with chats</th><th className={th}>Sold or agreed</th><th className={th}>Deal vs asking</th><th className={th}>Time to a deal</th></tr></thead>
             <tbody>
               {a.perChannel.map((c) => (
                 <tr key={c.channel} className="border-t"><td className="px-2 py-1">{c.channel}</td><td className="px-2 py-1">{c.items}</td><td className="px-2 py-1">{c.agreedItems} ({dash(c.sellThroughPct, "%")})</td><td className="px-2 py-1">{dash(c.avgDealPctOfAsk, "%")}</td><td className="px-2 py-1">{mins(c.medianMinutesToDeal)}</td></tr>
