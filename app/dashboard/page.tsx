@@ -214,6 +214,71 @@ function PasteReply() {
   );
 }
 
+type M = { items: number; agreedItems: number; paidItems: number; sellThroughPct: number | null; avgDealPctOfAsk: number | null; medianMinutesToDeal: number | null; avgRounds: number | null };
+type Analytics = {
+  totals: M;
+  perChannel: (M & { channel: string })[];
+  perItem: { title: string; currency: string; askCents: number; negotiations: number; priceCents: number | null; priceIsAgreed: boolean; pctOfAsk: number | null; status: string; rounds: number | null }[];
+};
+const dash = (v: number | null, suffix = "") => (v == null ? "-" : `${v}${suffix}`);
+const mins = (m: number | null) => (m == null ? "-" : m < 60 ? `${m} min` : m < 1440 ? `${Math.round(m / 6) / 10} hr` : `${Math.round(m / 144) / 10} days`);
+
+// Sales numbers for resellers, computed on the server from the same tables as the grid below.
+function AnalyticsPanel() {
+  const [a, setA] = useState<Analytics>();
+  useEffect(() => {
+    fetch("/api/seller/analytics").then((r) => (r.ok ? r.json() : undefined)).then(setA).catch(() => {});
+  }, []);
+  if (!a) return null;
+  const t = a.totals;
+  const tiles = [
+    ["Items listed", String(t.items)],
+    ["Sold or agreed", `${t.agreedItems} (${dash(t.sellThroughPct, "%")})`],
+    ["Paid", String(t.paidItems)],
+    ["Average deal vs asking", dash(t.avgDealPctOfAsk, "%")],
+    ["Time to a deal", mins(t.medianMinutesToDeal)],
+    ["Rounds per deal", dash(t.avgRounds)],
+  ];
+  const th = "px-2 py-1 text-left font-medium text-slate-600";
+  return (
+    <section className="space-y-3 rounded border bg-white p-3 text-sm">
+      <h2 className="font-semibold">Your sales</h2>
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-6">
+        {tiles.map(([label, value]) => (
+          <div key={label} className="rounded border bg-slate-50 p-2">
+            <div className="text-xs text-slate-500">{label}</div>
+            <div className="text-lg font-semibold">{value}</div>
+          </div>
+        ))}
+      </div>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="overflow-x-auto">
+          <h3 className="mb-1 font-medium">By where buyers found you</h3>
+          <table className="w-full">
+            <thead><tr className="bg-slate-50"><th className={th}>Channel</th><th className={th}>Items</th><th className={th}>Sold or agreed</th><th className={th}>Deal vs asking</th><th className={th}>Time to a deal</th></tr></thead>
+            <tbody>
+              {a.perChannel.map((c) => (
+                <tr key={c.channel} className="border-t"><td className="px-2 py-1">{c.channel}</td><td className="px-2 py-1">{c.items}</td><td className="px-2 py-1">{c.agreedItems} ({dash(c.sellThroughPct, "%")})</td><td className="px-2 py-1">{dash(c.avgDealPctOfAsk, "%")}</td><td className="px-2 py-1">{mins(c.medianMinutesToDeal)}</td></tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="max-h-64 overflow-auto">
+          <h3 className="mb-1 font-medium">By item</h3>
+          <table className="w-full">
+            <thead><tr className="sticky top-0 bg-slate-50"><th className={th}>Item</th><th className={th}>Asking</th><th className={th}>Chats</th><th className={th}>Best / agreed</th><th className={th}>% of asking</th><th className={th}>Status</th><th className={th}>Rounds</th></tr></thead>
+            <tbody>
+              {a.perItem.map((i, k) => (
+                <tr key={k} className="border-t"><td className="px-2 py-1">{i.title}</td><td className="px-2 py-1">{fmt(i.askCents, i.currency)}</td><td className="px-2 py-1">{i.negotiations}</td><td className="px-2 py-1">{i.priceCents == null ? "-" : `${fmt(i.priceCents, i.currency)}${i.priceIsAgreed ? "" : " (offer)"}`}</td><td className="px-2 py-1">{dash(i.pctOfAsk, "%")}</td><td className="px-2 py-1 capitalize">{i.status}</td><td className="px-2 py-1">{dash(i.rounds)}</td></tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function Dashboard() {
   const [rows, setRows] = useState<Row[]>([]);
   const [approvals, setApprovals] = useState<Approval[]>([]);
@@ -286,6 +351,7 @@ function Dashboard() {
           <li>Offers that need you show up under <b>Approvals</b>. Deals and PayPal payments show up in the table.</li>
         </ol>
       </section>
+      <AnalyticsPanel />
       <PairExtension />
       <PasteReply />
 
