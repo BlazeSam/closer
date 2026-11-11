@@ -210,8 +210,8 @@ API key. It passed 15 of 15 on three consecutive runs; the transcripts are in
   counter. Random latency and jitter reduce probing for the minimum but do not eliminate it.
 - The extension drafts replies on the deployed mock marketplace page in real Chrome (verified 11 Nov).
   On a real Facebook Marketplace thread its selectors were rewritten from the live DOM and read your own
-  messages correctly, but drafting a reply to a real buyer has not been seen yet (the test account was
-  the buyer, not the seller). Kijiji selectors are still unverified. Paste mode in the dashboard works
+  messages correctly, and from the seller account it drafted replies to a real buyer (11 Nov). That run
+  showed a doubled draft, since fixed and not yet re-run there. Kijiji selectors are still unverified. Paste mode in the dashboard works
   with any site today.
 - Closer is not escrow. PayPal's own buyer and seller protection terms apply to each payment.
 

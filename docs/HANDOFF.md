@@ -28,6 +28,12 @@ Everything is committed and pushed; the working tree is clean apart from an untr
   owner's account as the buyer. Needs the seller account in Chrome with the buyer having written last.
 - Kijiji: `id()` no longer uses `data-testid`. Real DOM never inspected; selectors still guesses.
 - Demo items relisted after testing (`/api/demo/reset`, 11 Nov).
+- **Facebook, seller side, 11 Nov:** on a real Messenger Marketplace thread the extension read every buyer
+  message correctly and drafted replies into the box (the owner sent them). Bugs found and fixed: draft inserted
+  twice (31ca777); first counter equal to the asking price; a typo offer ("1150" for 150) accepted; "checkout
+  below" with no checkout off the web (378e486); badge now names the item (74734b9). The fixed build has not been
+  re-run on Facebook yet. That thread's negotiation for `film-camera` is AGREED, so retest by choosing a
+  different item in the popup (a thread + item pair keeps its negotiation).
 - Three leftover "Laptop" test listings show in the dashboard and popup. Not deleted (needs the owner's OK).
 
 **Next:** seller-side Facebook test, then Kijiji (open a conversation on an ad you posted, buyer wrote last,

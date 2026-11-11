@@ -41,8 +41,8 @@ page so the content script runs. Log in to Kijiji yourself; the extension never 
   message box on the deployed `/demo/marketplace` with the badge "draft ready".
 - Facebook: selectors rewritten from a live Messenger Marketplace thread (`[role=log] [data-message-id]
   [aria-roledescription=message]`, label `At <time>, You: <text>`, composer `[role=textbox]`). They read the
-  owner's own message as outbound, correctly. Drafting a reply to a real buyer has **not** been seen: the test
-  account was the buyer in that thread. "You" detection is English-UI only. The send button selector is unchecked
+  owner's own message as outbound, correctly. On 11 Nov, from the seller account, it read every buyer message correctly
+  and drafted replies into the box. That run showed the draft inserted twice; fixed, not yet re-run there. "You" detection is English-UI only. The send button selector is unchecked
   (it only appears once text is typed; auto-send is off anyway).
 - Kijiji selectors (`CLOSER_KIJIJI` in `selectors.js`) are still unverified guesses. `id()` no longer falls back to
   `data-testid` (identical on every message, which would have silenced the extension after one reply).
