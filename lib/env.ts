@@ -18,5 +18,7 @@ const schema = z.object({
 let cached: z.infer<typeof schema> | undefined;
 // Lazy so `next build` and tests don't need secrets; first real use fails loudly.
 export function env() {
-  return (cached ??= schema.parse(process.env));
+  // On Render, trust the URL the platform reports over a hand-typed APP_URL: a wrong APP_URL sent
+  // every payment link to someone else's site.
+  return (cached ??= schema.parse({ ...process.env, APP_URL: process.env.RENDER_EXTERNAL_URL || process.env.APP_URL }));
 }
