@@ -50,3 +50,25 @@ describe("placeholder substitution", () => {
     expect(substitute("{price}", { price: 18000 }, "CAD")).toBe("CA$180");
   });
 });
+
+describe("claimsDeal", () => {
+  it("catches a reply that says the offer was accepted", async () => {
+    const { claimsDeal } = await import("../lib/guard");
+    for (const t of [
+      "Good news: your offer of CA$165 is accepted for the Canon AE-1.",
+      "Deal! CA$251 it is. You can pay securely with PayPal below.",
+      "I can accept your offer of CA$165.",
+      "Great, it's a deal.",
+    ]) expect(claimsDeal(t), t).toBe(true);
+  });
+  it("leaves counters and refusals alone", async () => {
+    const { claimsDeal } = await import("../lib/guard");
+    for (const t of [
+      "I can't accept CA$100, but I could meet you at CA$180.",
+      "I cannot accept your offer, the best I can do is CA$180.",
+      "That's a great deal for a working AE-1. The asking price is CA$180.",
+      "If you can do CA$170, we have a deal.",
+      "Let me check with the seller on that. One moment...",
+    ]) expect(claimsDeal(t), t).toBe(false);
+  });
+});

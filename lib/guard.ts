@@ -60,4 +60,10 @@ export function replyIsClean(reply: string, allowedCents: Iterable<number>): boo
   return extractAmounts(reply).every((a) => allowed.has(Math.round(a * 100)));
 }
 
+// True when a reply tells the buyer their offer was accepted. The model said "your offer is accepted"
+// on a turn where the policy had accepted nothing; the caller only lets this through on a real ACCEPT.
+// ponytail: phrase list, not understanding. Add phrasings here as they turn up in the audit log.
+export const claimsDeal = (reply: string) =>
+  /\b(?:offer|price|that|\{offer\}|\{price\})[^.!?]{0,40}\b(?:is|was|has been|have been) accepted\b|\b(?:i|we|the seller)(?:'ll| will| can| have|'ve| has)? accept(?:s|ed)? (?:your|that|the|\{)|\b(?:it'?s|that'?s|you(?:'ve| have) got|you have) a deal\b|(?:^|[.!?]\s+)deal[!.,]|(?:^|[.!?]\s+)sold[!.,]/i.test(reply);
+
 export const SAFE_TEMPLATE = "Let me double-check the numbers on that. Could you tell me the price you have in mind?";

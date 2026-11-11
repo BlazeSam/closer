@@ -6,7 +6,7 @@ import { anthropic } from "@ai-sdk/anthropic";
 import { openai } from "@ai-sdk/openai";
 import { generateText, stepCountIs, tool } from "ai";
 import { z } from "zod";
-import { SAFE_TEMPLATE, extractAmounts, replyIsClean } from "./guard";
+import { SAFE_TEMPLATE, claimsDeal, extractAmounts, replyIsClean } from "./guard";
 import { prisma } from "./db";
 import { env } from "./env";
 import { addMessage, applyOffer, createCustomApproval, sweep, type Outcome } from "./negotiation";
@@ -116,6 +116,7 @@ export async function handleTurn(negotiationId: string, message: string, offerCe
 async function llmTurn(negotiationId: string, message: string, listing: { askCents: number; currency: string; title: string; description: string; condition: string; notes: string }) {
   let outcome: Outcome | undefined;
   let buyerOfferCents: number | undefined;
+  let sellerQuestion: string | undefined;
   const history = await prisma.message.findMany({ where: { negotiationId }, orderBy: { createdAt: "asc" }, take: 30 });
   const messages = history.map((m) => ({ role: m.role === "BUYER" ? ("user" as const) : ("assistant" as const), content: m.content }));
   const tools = {
@@ -123,8 +124,13 @@ async function llmTurn(negotiationId: string, message: string, listing: { askCen
       description: "Evaluate the buyer's offer (dollars). Returns the decision; prices are placeholders the server fills in.",
       inputSchema: z.object({ amount: z.number().positive() }),
       execute: async ({ amount }) => {
-        buyerOfferCents = Math.round(amount * 100);
-        outcome = await applyOffer(negotiationId, buyerOfferCents);
+        const cents = Math.round(amount * 100);
+        // One offer is judged once per turn. A regenerated reply re-runs this tool, and judging the
+        // same offer again used up a negotiation round each time.
+        if (!outcome || cents !== buyerOfferCents) {
+          buyerOfferCents = cents;
+          outcome = await applyOffer(negotiationId, cents);
+        }
         return { decision: outcome.kind, price: "{price}", buyerOffer: "{offer}" };
       },
     }),
@@ -137,7 +143,9 @@ async function llmTurn(negotiationId: string, message: string, listing: { askCen
       description: "Ask the seller about anything outside your authority (holds, delivery, bundles, meeting times).",
       inputSchema: z.object({ question: z.string().max(500) }),
       execute: async ({ question }) => {
-        await createCustomApproval(negotiationId, question);
+        // Recorded now, raised after the reply. Raising it here paused the negotiation mid-turn, so
+        // "165 and I can pick up today" had its offer refused as "conversation closed".
+        sellerQuestion = question;
         return { decision: "PENDING" };
       },
     }),
@@ -150,7 +158,9 @@ async function llmTurn(negotiationId: string, message: string, listing: { askCen
 
   const n = await prisma.negotiation.findUniqueOrThrow({ where: { id: negotiationId } });
   const buyerAmounts = (await prisma.message.findMany({ where: { negotiationId, role: "BUYER" } })).flatMap((m) => extractAmounts(m.content).map((a) => Math.round(a * 100)));
-  const allowed = () => [listing.askCents, ...buyerAmounts, ...(outcome && "priceCents" in outcome ? [outcome.priceCents] : []), ...(n.lastCounterCents ? [n.lastCounterCents] : []), ...(n.agreedCents ? [n.agreedCents] : [])];
+  // buyerOfferCents: a buyer who writes "would you take 100?" names an amount the regex above does not
+  // see (no currency sign), and the reply that echoed it back was being thrown away.
+  const allowed = () => [listing.askCents, ...buyerAmounts, ...(buyerOfferCents ? [buyerOfferCents] : []), ...(outcome && "priceCents" in outcome ? [outcome.priceCents] : []), ...(n.lastCounterCents ? [n.lastCounterCents] : []), ...(n.agreedCents ? [n.agreedCents] : [])];
 
   // A provider outage, or a key with no credit, must not take the sale down with a 500. Fall back to
   // the policy template, exactly as the no-API-key path does. Prices still come only from the policy.
@@ -175,10 +185,12 @@ async function llmTurn(negotiationId: string, message: string, listing: { askCen
     reply = await safeRun();
     if (reply && leaksInternals(reply)) reply = "";
   }
-  if (reply && !replyIsClean(reply, allowed())) {
+  // Clean = no amount the system did not issue, and no "it's a deal" unless the policy accepted.
+  const clean = (t: string) => replyIsClean(t, allowed()) && !(claimsDeal(t) && outcome?.kind !== "ACCEPT");
+  if (reply && !clean(reply)) {
     await prisma.auditEvent.create({ data: { negotiationId, type: "GUARD_TRIGGERED", payload: { reply, attempt: 1 } } });
     reply = await safeRun();
-    if (reply && !replyIsClean(reply, allowed())) {
+    if (reply && !clean(reply)) {
       await prisma.auditEvent.create({ data: { negotiationId, type: "GUARD_TRIGGERED", payload: { reply, attempt: 2, replaced: true } } });
       reply = "";
     }
@@ -196,6 +208,11 @@ async function llmTurn(negotiationId: string, message: string, listing: { askCen
     reply = outcome ? replyFor(outcome, listing.askCents, listing.currency) : SAFE_TEMPLATE;
   }
   await prisma.auditEvent.create({ data: { negotiationId, type: "REPLY_CHECKED", payload: { source: fromModel ? "model" : "policy" } } });
+  if (sellerQuestion) {
+    await createCustomApproval(negotiationId, substitute(sellerQuestion, { price: outcome && "priceCents" in outcome ? outcome.priceCents : undefined, ask: listing.askCents, offer: buyerOfferCents }, listing.currency));
+    // Nothing else to say and no offer on the table: tell the buyer we are checking.
+    if (!fromModel && !outcome) reply = replyFor({ kind: "PENDING" }, listing.askCents, listing.currency);
+  }
   return { reply, outcome };
 }
 
