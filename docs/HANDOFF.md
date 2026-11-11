@@ -1,9 +1,57 @@
 # Closer — handoff
 
-Last updated 2026-11-09. Hackathon ("Build What's Next with PayPal and AI") closes **Thursday 12 Nov 2026**.
+Last updated 2026-11-11. Hackathon ("Build What's Next with PayPal and AI") closes
+**Thursday 12 Nov 2026, 12:00 pm Pacific**.
 
 Read this first, then `docs/PLAN_EXTENSION.md` for the step-by-step design history and `SCOPE.md`
 for the original product shape.
+
+---
+
+## 0. Resume here (11 Nov)
+
+Live at **https://closer-9a91.onrender.com** (Render, auto-deploys from `main`, takes about 3 minutes).
+Everything is committed and pushed; the working tree is clean apart from an untracked `.claude/`.
+
+**In progress: the extension on real sites.**
+
+- The extension is loaded unpacked in the owner's real Chrome. On the deployed
+  `/demo/marketplace` it injected, read the buyer message and answered
+  "Not paired. Paste a pairing token in the Closer popup." So manifest, content script and
+  service worker all work. **It has not yet drafted a reply**, because it is not paired.
+- Next: the owner pairs it (dashboard → "Pair a browser extension" → token into the popup, listing
+  slug `film-camera`). Then post a buyer message on `/demo/marketplace` and confirm a draft lands
+  in the message box.
+- Then real sites. The owner opens one test chat thread on Facebook (`facebook.com/messages/t/...`)
+  and one on Kijiji (My Messages). Inspect the real DOM through Claude in Chrome, read-only, and fix
+  `extension/selectors.js`. Both selector sets are guesses. Do not send messages or change anything
+  on those accounts. After editing, the owner must press reload on the extension in
+  `chrome://extensions`.
+- Known bug to fix in the Kijiji set: `id()` falls back to `data-testid`, which is the same for every
+  message, so the extension would answer once and then go silent. Return `null` unless a real
+  per-message id exists.
+- If a marketplace chat lives on a host or path the manifest does not match (for example
+  `messenger.com`, or a Kijiji path other than `/m-msg-my-messages/`), add it to both
+  `host_permissions` and `content_scripts.matches` in `extension/manifest.json`.
+
+**Still needs the owner (nobody else can do these):**
+
+1. Fill the four `TODO(you)` values in `README.md` and the matching slots in `docs/DEVPOST.md`.
+2. Register the PayPal webhook and set `PAYPAL_WEBHOOK_ID` on Render, then send and pay one sandbox
+   invoice from the dashboard button.
+3. Make one sandbox payment through the live chat.
+4. Record the video and submit on Devpost. Copy and video outline are in `docs/DEVPOST.md`.
+5. Set an Anthropic spend limit.
+
+**How to work here without breaking things:**
+
+- Never run `npm test` blind: 13 tests write to and delete from the live Neon database. The safe set is
+  `npx vitest run tests/guard.test.ts tests/policy.test.ts tests/trace.test.ts tests/invoice.test.ts tests/floorprobe.test.ts tests/listingDraft.test.ts tests/extension-content.test.ts`.
+- To see the dashboard locally without the real password, start the `closer-dev-testpw` config in
+  `.claude/launch.json` (it overrides `SELLER_PASSWORD` with a throwaway value for that process).
+- Any test that reaches a deal really reserves the item. Relist with
+  `curl -X POST https://closer-9a91.onrender.com/api/demo/reset`.
+- Commit and push in small steps; the owner asked for that.
 
 ---
 
