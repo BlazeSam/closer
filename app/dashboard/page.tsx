@@ -278,6 +278,14 @@ function Dashboard() {
 
   return (
     <div className="space-y-6">
+      <section className="rounded border bg-slate-50 p-3 text-sm">
+        <h2 className="mb-1 font-semibold">{rows.length ? "How this works" : "Get started in 3 steps"}</h2>
+        <ol className="list-decimal space-y-1 pl-5 text-slate-700">
+          <li><a href="/sell/new" className="text-blue-600 underline">List an item</a>: a photo, your asking price and the lowest price you will take. You get a link to share.</li>
+          <li>Buyers chat on that link, or click <b>Connect this browser</b> below so Closer drafts replies in your Facebook Marketplace or Kijiji chats.</li>
+          <li>Offers that need you show up under <b>Approvals</b>. Deals and PayPal payments show up in the table.</li>
+        </ol>
+      </section>
       <PairExtension />
       <PasteReply />
 

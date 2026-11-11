@@ -14,13 +14,40 @@ export default async function Home() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold">Delegate the sale. Keep the control.</h1>
+        <h1 className="text-3xl font-bold">Let an AI agent haggle for you. Get paid with PayPal.</h1>
         <p className="mt-2 max-w-2xl text-slate-600">
-          Closer is an AI agent that sells your second-hand items within hard limits you set. It drafts replies where you
-          already sell, holds your minimum price even under pressure, and settles through PayPal. Buyers can send their own
-          agent to negotiate with it.
+          Selling something second-hand? Closer answers your buyers, never goes below the lowest price you set, and takes the
+          payment through PayPal. Buying? Chat with it yourself, or send your own agent to get you a better deal.
         </p>
       </div>
+
+      <section className="grid gap-4 md:grid-cols-2">
+        <div className="rounded-lg border-2 border-slate-900 bg-white p-5">
+          <h2 className="text-xl font-bold">I&apos;m selling</h2>
+          <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm text-slate-700">
+            <li><b>List your item.</b> Snap a photo, set your asking price and the lowest price you&apos;ll take.</li>
+            <li><b>Share your Closer link</b> with buyers, or add the browser extension and Closer types replies in your Facebook Marketplace or Kijiji chats.</li>
+            <li><b>Get paid.</b> When a buyer agrees, they pay through PayPal. You approve anything unusual from your dashboard.</li>
+          </ol>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link href="/sell/new" className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white">List an item</Link>
+            <Link href="/dashboard" className="rounded border px-4 py-2 text-sm">Open my dashboard</Link>
+          </div>
+        </div>
+        <div className="rounded-lg border bg-white p-5">
+          <h2 className="text-xl font-bold">I&apos;m buying</h2>
+          <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm text-slate-700">
+            <li><b>Open the seller&apos;s Closer link</b>, or pick an item below.</li>
+            <li><b>Make an offer</b> in the chat. Closer answers straight away, day or night.</li>
+            <li><b>Or send your own agent</b> with your budget. It haggles for you and stops at your limit.</li>
+          </ol>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {hero && <Link href={`/l/${hero.slug}`} className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white">Try buying an item</Link>}
+            {hero && <Link href={`/agent-buyer?slug=${hero.slug}`} className="rounded border px-4 py-2 text-sm">Send my own agent</Link>}
+          </div>
+        </div>
+      </section>
+
 
       {hero ? (
         <AgentDuel slug={hero.slug} title={hero.title} askCents={hero.askCents} currency={hero.currency} />
@@ -44,7 +71,7 @@ export default async function Home() {
       </section>
 
       <section>
-        <h2 className="mb-2 font-semibold">Try it yourself</h2>
+        <h2 className="mb-2 font-semibold">Items for sale right now (demo)</h2>
         {listings.length === 0 && <p className="text-sm text-slate-500">No listings yet.</p>}
         <ul className="grid gap-3 sm:grid-cols-3">
           {listings.map((l) => (
@@ -71,7 +98,7 @@ export default async function Home() {
       <section className="flex flex-wrap gap-4 text-sm">
         <Link href="/sell/new" className="text-blue-600 hover:underline">Create a listing from a photo</Link>
         <Link href="/dashboard" className="text-blue-600 hover:underline">Seller dashboard</Link>
-        <Link href="/demo/marketplace" className="text-blue-600 hover:underline">Marketplace demo (browser extension)</Link>
+        <Link href="/demo/marketplace" className="text-blue-600 hover:underline">See the browser extension on a practice chat</Link>
       </section>
     </div>
   );
