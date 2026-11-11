@@ -102,8 +102,8 @@ paying still work.
 | `/l/[slug]` | Buyer chat, the "Under the hood" trace, PayPal checkout |
 | `/agent-buyer` | Send your own buyer agent with a budget and instructions |
 | `/pay/[id]` | One-tap PayPal approval for a deal an agent agreed |
-| `/sell/new` | Create a listing, optionally from a photo (seller password) |
-| `/dashboard` | AG Grid of negotiations, approvals, transcript, audit log, PayPal invoice sending, paste-mode reply drafting, extension pairing (seller password) |
+| `/sell/new` | Create a listing: a photo drafts the details, then a few plain questions (condition, lowest price, yes-at-once price, pickup or shipping). Also opened pre-filled by the extension's "Add to Closer" (seller password) |
+| `/dashboard` | Sales analytics (sell-through, deal vs asking, time to a deal, rounds, by channel and by item), AG Grid of negotiations, approvals, transcript, audit log, PayPal invoice sending, paste-mode reply drafting, extension pairing (seller password) |
 | `/demo/marketplace` | A mock marketplace chat for trying the browser extension |
 | `GET /api/agent/listings/[slug]` | Agent API: public listing details |
 | `POST /api/agent/listings/[slug]/negotiate` | Agent API: send a message and an offer |
@@ -125,7 +125,9 @@ Most second-hand buyers are in a marketplace chat, not on this site. Two ways to
 `extension/` is a Chrome extension that does the pasting for you: it reads the newest buyer message
 in a chat thread, asks Closer for a reply and puts it in the message box as a draft. The seller
 presses send. Pairing is one click: "Connect this browser" on the dashboard. See
-[extension/README.md](extension/README.md) for loading it. It is an independent tool and
+[extension/README.md](extension/README.md) for loading it. On your own Facebook Marketplace item page it also
+shows an **Add to Closer** button that reads the listing (title, price, description, condition, photo) and opens
+`/sell/new` filled in; you set the two private prices and save. It is an independent tool and
 is not affiliated with or endorsed by any marketplace.
 
 ## Run it locally
@@ -213,6 +215,8 @@ API key. It passed 15 of 15 on three consecutive runs; the transcripts are in
   messages correctly, and from the seller account it drafted replies to a real buyer (11 Nov). That run
   showed a doubled draft, since fixed and not yet re-run there. Kijiji selectors are still unverified. Paste mode in the dashboard works
   with any site today.
+- "Add to Closer" reads Facebook item pages through Open Graph tags with a DOM fallback. Not yet checked on a
+  live listing page; Kijiji listing pages are not supported yet.
 - Closer is not escrow. PayPal's own buyer and seller protection terms apply to each payment.
 
 ## License

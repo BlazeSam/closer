@@ -36,6 +36,23 @@ Everything is committed and pushed; the working tree is clean apart from an untr
   different item in the popup (a thread + item pair keeps its negotiation).
 - Three leftover "Laptop" test listings show in the dashboard and popup. Not deleted (needs the owner's OK).
 
+**Done 11 Nov (afternoon, power-user pass):**
+
+- **Add to Closer** (f0a00a8): `extension/listing.js` + `CLOSER_FB_LISTING` in `selectors.js`. On
+  `facebook.com/marketplace/item/<id>/` a fixed "Add to Closer" button reads title, price, description, condition and
+  first photo (Open Graph tags first, DOM fallback; read-only) and opens `/sell/new?from=facebook&...` pre-filled. The
+  seller sets the private prices and saves. Manifest 0.2.0 adds `facebook.com/marketplace/*` (content script runs
+  `selectors.js` + `listing.js` only, never the reply drafter). Prefill checked locally. **Selectors not yet checked on
+  a live listing page.** Kijiji listing pages not supported (skipped: Kijiji DOM never inspected).
+- **Photo + questions** (d7ca91c): `/sell/new` is photo → check details → "a few quick questions" (condition, what the
+  photo misses, lowest price, yes-at-once price, pickup/shipping). The draft's price guesses are shown as hints, not
+  pre-filled. Plain-words check of floor ≤ auto-accept ≤ asking before the server's. Checked locally (prefill +
+  validation message); a real save and a real photo draft were not run (would write to the live DB / spend tokens).
+- **Sales analytics** (7b194fd, 735f96c): `GET /api/seller/analytics` (seller-gated) + pure `lib/analytics.ts` +
+  panel at the top of `/dashboard`. Time to a deal = first message → ACCEPT/approved audit event (falls back to
+  `updatedAt`). EXPIRED agreements don't count as sales. Offers above asking are ignored as typos. Checked locally
+  against the live data.
+
 **Next:** seller-side Facebook test, then Kijiji (open a conversation on an ad you posted, buyer wrote last,
 read DOM only, fix `CLOSER_KIJIJI`). After any extension edit the owner presses reload in `chrome://extensions`
 and reloads the page.

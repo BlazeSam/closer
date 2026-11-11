@@ -41,7 +41,9 @@ wanted an agent a seller could actually leave alone.
 
 ## What it does
 
-A seller creates a listing with a public asking price and a secret minimum, by hand or from a photo.
+A seller creates a listing with a public asking price and a secret minimum: from a photo (Closer drafts
+the details, then asks a few plain questions a photo cannot answer), or straight from a Facebook
+listing they already posted, through the extension's "Add to Closer" button.
 Closer then negotiates on the seller's behalf.
 
 - **Buyers haggle with it in chat.** It counters, makes a final offer, or asks the seller to approve
@@ -56,7 +58,10 @@ Closer then negotiates on the seller's behalf.
   The seller pastes the buyer's message into Closer, gets a reply that holds the minimum, and sends
   it. When the deal is agreed, Closer hands over a PayPal payment link or sends the invoice.
 - **The seller stays in control.** A dashboard shows every negotiation, the offers waiting for
-  approval, the full transcript and an audit log of each decision.
+  approval, the full transcript and an audit log of each decision. For resellers moving many items,
+  an analytics panel shows sell-through, average deal as a share of asking, median time from first
+  message to a deal and rounds per deal, split by channel (web, buyer agent, Facebook, Kijiji, pasted)
+  and by item.
 - [extension] **It goes where the seller already sells.** A Chrome extension, connected with one click
   from the dashboard, reads the newest buyer message in a chat thread and drafts Closer's reply in the
   message box. The seller presses send. Shown on a practice marketplace page; real marketplace pages
