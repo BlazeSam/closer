@@ -11,7 +11,7 @@ import { prisma } from "./db";
 import { env } from "./env";
 import { addMessage, applyOffer, createCustomApproval, sweep, type Outcome } from "./negotiation";
 import { allow } from "./ratelimit";
-import { replyFor, substitute } from "./replies";
+import { fmt, replyFor, substitute } from "./replies";
 
 export class RateLimitError extends Error {}
 export const MAX_MESSAGE_CHARS = 1000;
@@ -93,7 +93,11 @@ export async function handleTurn(negotiationId: string, message: string, offerCe
   if (n0.status !== "OPEN") {
     // AGREED / AWAITING_APPROVAL / closed: no new price talk, just status.
     outcome = n0.status === "AWAITING_APPROVAL" ? { kind: "PENDING" } : { kind: "CLOSED" };
-    reply = n0.status === "AGREED" ? "Your deal is agreed, please complete the PayPal checkout below." : replyFor(outcome, listing.askCents, listing.currency);
+    // Off the web chat there is no checkout "below" (seen live on Facebook 11 Nov): give the link and the price.
+    const agreed = `Your deal is agreed at ${fmt(n0.agreedCents ?? listing.askCents, listing.currency)}.`;
+    reply = n0.status !== "AGREED" ? replyFor(outcome, listing.askCents, listing.currency)
+      : n0.channel === "WEB" ? `${agreed} Please complete the PayPal checkout below.`
+      : `${agreed} Pay securely with PayPal here: ${env().APP_URL}/pay/${n0.id}`;
   } else if (offerCents !== undefined || !hasKey()) {
     // Structured offer (agent API) or no LLM: pure deterministic path.
     const amounts = extractAmounts(message);

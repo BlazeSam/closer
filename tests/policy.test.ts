@@ -27,11 +27,22 @@ describe("evaluateOffer rules", () => {
     expect(evaluateOffer(bike, st({ lastCounterCents: 19000 }), 19500)).toEqual({ type: "ACCEPT", priceCents: 19000 });
   });
   it("needs approval between floor and auto-accept, showing a counter above the offer", () => {
-    expect(evaluateOffer(bike, st(), 18000)).toEqual({ type: "NEEDS_APPROVAL", priceCents: 18000, counterCents: 22000, final: false });
+    const d = evaluateOffer(bike, st(), 18000) as { type: string; counterCents: number };
+    expect(d.type).toBe("NEEDS_APPROVAL");
+    expect(d.counterCents).toBeGreaterThan(18000);
+    expect(d.counterCents).toBeLessThan(bike.askCents);
     expect(evaluateOffer(bike, st(), 17000).type).toBe("NEEDS_APPROVAL");
   });
-  it("counters below floor, starting at ask", () => {
-    expect(evaluateOffer(bike, st(), 10000)).toEqual({ type: "COUNTER", priceCents: 22000 });
+  // A first counter equal to the asking price is no counter at all; the model called it "meeting you partway".
+  it("counters below floor, and the first counter is already below ask", () => {
+    const first = evaluateOffer(bike, st(), 10000) as { type: string; priceCents: number };
+    expect(first.type).toBe("COUNTER");
+    expect(first.priceCents).toBeLessThan(bike.askCents);
+    expect(first.priceCents).toBeGreaterThanOrEqual(bike.floorCents);
+  });
+  it("questions an offer far above ask instead of accepting it (typo guard)", () => {
+    expect(evaluateOffer(bike, st(), bike.askCents * 2 + 100)).toEqual({ type: "REJECT_INVALID" });
+    expect(evaluateOffer(bike, st(), bike.askCents + 100)).toEqual({ type: "ACCEPT", priceCents: bike.askCents });
   });
   it("counters descend but stay >= floor", () => {
     let last: number | undefined;
@@ -46,7 +57,7 @@ describe("evaluateOffer rules", () => {
     expect(evaluateOffer(bike, st({ round: 6 }), 10000).type).toBe("FINAL_OFFER");
   });
   it("rejects invalid offers", () => {
-    for (const o of [0, -5, 1.5, NaN, 22000 * 11]) expect(evaluateOffer(bike, st(), o)).toEqual({ type: "REJECT_INVALID" });
+    for (const o of [0, -5, 1.5, NaN, 22000 * 3]) expect(evaluateOffer(bike, st(), o)).toEqual({ type: "REJECT_INVALID" });
     expect(evaluateOffer(bike, st(), 20000, { offerCurrency: "EUR" })).toEqual({ type: "REJECT_INVALID" });
   });
   it("throws on bad listing config", () => {

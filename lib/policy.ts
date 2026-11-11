@@ -23,7 +23,9 @@ export type Decision =
 export const DEFAULT_MAX_ROUNDS = 6;
 const MOVE = 0.35; // share of remaining gap given up per round
 const JITTER = 0.03; // +/- on MOVE, so the schedule isn't a fixed curve buyers can invert
-const MAX_OFFER_MULTIPLE = 10; // offers beyond 10x ask are treated as typos/abuse
+// Offers beyond 2x ask are treated as typos and questioned, not accepted. Live 11 Nov a buyer typed "1150" for
+// "150" on a CA$180 item and was told "your CA$1,150 is accepted".
+const MAX_OFFER_MULTIPLE = 2;
 
 export function validateListing(l: PolicyListing): void {
   const ints = [l.askCents, l.floorCents, l.autoAcceptCents].every(Number.isInteger);
@@ -40,12 +42,14 @@ function hash01(s: string): number {
 
 const ceilDollar = (c: number) => Math.ceil(c / 100) * 100;
 
-// Counter for the given round: floor + gap * prod(1 - move_i). Rounded UP to whole
+// Counter for the given round: floor + gap * prod(1 - move_i), i = 0..round. Rounded UP to whole
 // dollars (so rounding can never undercut floor), clamped to [floor, previous counter, ask].
 export function counterFor(l: PolicyListing, s: PolicyState): number {
   const gap = l.askCents - l.floorCents;
   let remaining = gap;
-  for (let i = 0; i < s.round; i++) {
+  // i <= round: the first counter already concedes a step. Starting at i < round made the first counter
+  // the asking price itself, which the model then dressed up as "meeting you partway" (seen live 11 Nov).
+  for (let i = 0; i <= s.round; i++) {
     const move = MOVE + (hash01(`${s.seed}:${i}`) * 2 - 1) * JITTER;
     remaining *= 1 - move;
   }
