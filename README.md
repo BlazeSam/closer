@@ -9,7 +9,7 @@ price comes from a tested policy in code, and every payment amount comes from th
 
 Built for the hackathon *Build What's Next with PayPal and AI*.
 
-- **Live demo:** TODO(you): hosted URL
+- **Live demo:** https://closer-9a91.onrender.com
 - **Video:** TODO(you): YouTube link
 
 ## Try it in two minutes
@@ -103,16 +103,28 @@ paying still work.
 | `/agent-buyer` | Send your own buyer agent with a budget and instructions |
 | `/pay/[id]` | One-tap PayPal approval for a deal an agent agreed |
 | `/sell/new` | Create a listing, optionally from a photo (seller password) |
-| `/dashboard` | AG Grid of negotiations, approvals, transcript, audit log, extension pairing (seller password) |
+| `/dashboard` | AG Grid of negotiations, approvals, transcript, audit log, PayPal invoice sending, paste-mode reply drafting, extension pairing (seller password) |
 | `/demo/marketplace` | A mock marketplace chat for trying the browser extension |
 | `GET /api/agent/listings/[slug]` | Agent API: public listing details |
 | `POST /api/agent/listings/[slug]/negotiate` | Agent API: send a message and an offer |
 | `GET /api/agent/negotiations/[id]` | Agent API: poll a negotiation |
 
-## Browser extension
+## Selling where the buyers already are
 
-`extension/` is a Chrome extension that reads the newest buyer message in a chat thread, asks Closer
-for a reply and puts it in the message box as a draft. The seller presses send. See
+Most second-hand buyers are in a marketplace chat, not on this site. Two ways to use Closer there:
+
+- **Paste mode** (`/dashboard`, "Reply to a buyer on another site"). Paste what the buyer wrote, pick
+  the listing, and Closer drafts the reply through the same policy and guard. You copy it back and
+  send it yourself. It works with any marketplace or messaging app.
+- **Getting paid.** When the deal is agreed, paste mode gives you a PayPal payment link to send, or
+  click the deal in the dashboard, type the buyer's email and send a **PayPal invoice**. The buyer
+  pays on paypal.com and the webhook marks the deal paid.
+
+### Browser extension
+
+`extension/` is a Chrome extension that does the pasting for you: it reads the newest buyer message
+in a chat thread, asks Closer for a reply and puts it in the message box as a draft. The seller
+presses send. See
 [extension/README.md](extension/README.md) for loading and pairing it. It is an independent tool and
 is not affiliated with or endorsed by any marketplace.
 
@@ -196,10 +208,9 @@ API key. It passed 15 of 15 on three consecutive runs; the transcripts are in
 - Rate limiting is in memory, so it is per instance.
 - An offer that needs the seller's approval still reads slightly differently from an ordinary
   counter. Random latency and jitter reduce probing for the minimum but do not eliminate it.
-- Sending an invoice has no button yet. It is a seller-authenticated
-  `POST /api/negotiations/[id]/paypal/invoice` with `{"email": "<buyer email>"}`.
 - The extension has been exercised against the mock marketplace page only. Its selectors for real
-  marketplace sites are untested.
+  marketplace sites (Facebook Marketplace chats, Kijiji) are unverified. Paste mode in the dashboard
+  works with any site today.
 - Closer is not escrow. PayPal's own buyer and seller protection terms apply to each payment.
 
 ## License
