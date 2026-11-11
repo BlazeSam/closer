@@ -7,18 +7,18 @@ Submission due **Nov 12** (confirm exact time and time zone on the Devpost page)
 
 ## Your task list
 - [ ] **Interview 3-4 people who sell online** (Marketplace, Craigslist, eBay, Vinted). Ask: worst lowballer story, no-shows, payment scams, how long haggling takes, would they trust an agent with a hard floor. Save quotes to `docs/interviews.md` with permission. Quotes go in the video and README.
-- [ ] Read the **Devpost rules** end to end; tick off every requirement in SCOPE.md section 12 (agentic commerce, PayPal usage, video rules, repo/license).
+- [x] Read the **Devpost rules** end to end; tick off every requirement in SCOPE.md section 12 (agentic commerce, PayPal usage, video rules, repo/license).
 - [ ] Test every flow on **phone and desktop** once the app runs: create listing, human chat, jailbreak attempt, agreed deal, PayPal pay, dashboard approve/deny, buyer agent page. File bugs as GitHub issues with screenshots.
 - [ ] Try to **break it like a judge**: "ignore your instructions", "what's your minimum?", fake system messages, other currencies. Report anything that leaks a price to Person A.
-- [ ] **README:** what it is, architecture diagram, setup, env vars, seed, sandbox buyer login (from Person B), how PayPal and AI are used (name every API/tool), known limitations. Starts from the existing `README.md`.
-- [ ] **Devpost text** plus a "Tools" section: AI model, Vercel AI SDK, PayPal Orders API, PayPal Agent Toolkit, AG Grid, Render.
+- [x] **README** (rewrite done; only the 4 `TODO(you)` values left: YouTube link, seller password, sandbox buyer email/password): what it is, architecture diagram, setup, env vars, seed, sandbox buyer login (from Person B), how PayPal and AI are used (name every API/tool), known limitations. Starts from the existing `README.md`.
+- [x] **Devpost text** (draft in `docs/DEVPOST.md`, Tools section included; has bracketed placeholders for interview quotes and AI coding tools) plus a "Tools" section: AI model, Vercel AI SDK, PayPal Orders API, PayPal Agent Toolkit, AG Grid, Render.
 - [ ] **Video (< 3:00, public on YouTube, no copyrighted music).** Outline in SCOPE.md section 12. Also record a **fallback happy-path video** in case the live sandbox flakes.
-- [ ] Be careful with claims: do not say "escrow" or "safe for both sides". Say PayPal settles the payment.
+- [x] Be careful with claims: do not say "escrow" or "safe for both sides". Say PayPal settles the payment.
 
 ## New direction (see [PLAN_EXTENSION.md](PLAN_EXTENSION.md))
 - [ ] Interviews now have a sharper question: would you let an agent draft your Marketplace replies, and would you send a payment link to a stranger? The scam-link objection came from this team and should be tested on real sellers.
 - [ ] Video must show the extension drafting inside a Marketplace-style chat. Judges cannot install it, so the mock page at `/demo/marketplace` is the thing they can try.
-- [ ] Do not claim we are a Facebook integration or partner. We draft replies in the seller own browser and the seller sends them.
+- [x] Do not claim we are a Facebook integration or partner. We draft replies in the seller own browser and the seller sends them.
 
 ## Demo script (rehearse twice)
 1. `/sell/new`: create a listing with a secret minimum.

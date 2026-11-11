@@ -17,19 +17,19 @@ The PayPal order amount is set **server-side from `Negotiation.agreedCents`**, n
 | `render.yaml` | Render blueprint (web service + Postgres). |
 
 ## Your task list
-- [ ] **M1 today:** create the PayPal sandbox app, fill `.env`, run the spike end to end until it prints `{"ok":true,...}` with `COMPLETED`.
-- [ ] Stand up Postgres (Docker or Neon/Render), `npx prisma db push`, `npm run seed`.
-- [ ] **Deploy a hello-world + Postgres to Render on day 1** (see `render.yaml`) so hosting problems show up early. Use an always-on instance or a keep-warm ping.
-- [ ] Test the full checkout in the sandbox: agree a deal on `/l/road-bike`, pay with the sandbox buyer, confirm status becomes PAID and the listing SOLD. Test cancel and retry.
-- [ ] Put the **sandbox buyer login** in the README (sandbox credentials only).
-- [ ] Dashboard: confirm approval flow end to end (price approve/deny, custom `ask_seller` reply), audit log view, status pills.
-- [ ] PayPal webhook `POST /api/paypal/webhook` for `PAYMENT.CAPTURE.COMPLETED` (verify signature, idempotent). Needs `PAYPAL_WEBHOOK_ID`.
-- [ ] **Agent Toolkit, read-only panel on the dashboard** (`get_order`, `list_transactions` via `@paypal/agent-toolkit`, sandbox). This keeps the "Best Use of PayPal + AI" claim true even if the full copilot is cut.
-- [ ] **Confirm PayPal Invoicing is enabled on the sandbox account** before anyone builds on it.
-- [ ] `lib/paypalInvoice.ts`: create + send an invoice for `Negotiation.agreedCents` (amount from the DB, never the client). Webhook `INVOICING.INVOICE.PAID` marks PAID + SOLD, idempotent, reusing the verify-then-mark logic.
-- [x] `SellerToken` table (sha256 hash stored, plaintext shown once, revocable) + `POST /api/seller/tokens` to mint. Extension pairing never sees `SELLER_PASSWORD`. **Dashboard UI to mint/revoke is still TODO.**
+- [x] **M1 today:** create the PayPal sandbox app, fill `.env`, run the spike end to end until it prints `{"ok":true,...}` with `COMPLETED`.
+- [x] Stand up Postgres (done on Neon; Docker or Render also work), `npx prisma db push`, `npm run seed`.
+- [x] **Deploy a hello-world + Postgres to Render on day 1** (see `render.yaml`) so hosting problems show up early. Use an always-on instance or a keep-warm ping.
+- [x] Test the full checkout in the sandbox: agree a deal on `/l/road-bike`, pay with the sandbox buyer, confirm status becomes PAID and the listing SOLD. Test cancel and retry.
+- [ ] Put the **sandbox buyer login** in the README (sandbox credentials only). README has the slots, still `TODO(you)`.
+- [x] Dashboard: confirm approval flow end to end (price approve/deny, custom `ask_seller` reply), audit log view, status pills.
+- [x] PayPal webhook `POST /api/paypal/webhook` for `PAYMENT.CAPTURE.COMPLETED` (verify signature, idempotent). Needs `PAYPAL_WEBHOOK_ID`.
+- [ ] **Agent Toolkit, read-only panel (not built; `@paypal/agent-toolkit` not installed, Devpost draft already says no Toolkit claim) on the dashboard** (`get_order`, `list_transactions` via `@paypal/agent-toolkit`, sandbox). This keeps the "Best Use of PayPal + AI" claim true even if the full copilot is cut.
+- [x] **Confirm PayPal Invoicing is enabled on the sandbox account** before anyone builds on it.
+- [x] `lib/paypalInvoice.ts` (lives in `lib/paypal.ts` + `/paypal/invoice` route): create + send an invoice for `Negotiation.agreedCents` (amount from the DB, never the client). Webhook `INVOICING.INVOICE.PAID` marks PAID + SOLD, idempotent, reusing the verify-then-mark logic.
+- [x] `SellerToken` table (sha256 hash stored, plaintext shown once, revocable) + `POST /api/seller/tokens` to mint. Extension pairing never sees `SELLER_PASSWORD`. **Dashboard mint button is done; revoke UI/route still missing.**
 - [x] `POST /api/extension/reply` ({token, channel, threadId, listingSlug, buyerMessage}) -> same `handleTurn`. Token-scoped: rejects bad/revoked tokens and listings owned by another seller. Rate limited 120/min per token. Tests in `tests/extension.test.ts`.
-- [ ] Deal-agreed and paid emails via Resend (`RESEND_API_KEY`). Plain text, no campaign tooling.
+- [ ] (cut, PayPal emails the invoice) Deal-agreed and paid emails via Resend (`RESEND_API_KEY`). Plain text, no campaign tooling.
 - [ ] Stretch, after everything: PayPal Pay Later buttons on the hosted checkout. Verify CAD/sandbox availability before it goes in the video.
 - [ ] P1: seller copilot with confirm-before-refund, take-over button.
 - [ ] Spend cap on the LLM provider before the URL goes public.
