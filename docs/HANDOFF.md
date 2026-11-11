@@ -27,8 +27,7 @@ Everything is committed and pushed; the working tree is clean apart from an untr
   **Not verified:** a draft against a real buyer. The owner's test thread ("Samuel · Test Item") has the
   owner's account as the buyer. Needs the seller account in Chrome with the buyer having written last.
 - Kijiji: `id()` no longer uses `data-testid`. Real DOM never inspected; selectors still guesses.
-- The last demo test agreed CA$160 on `film-camera`, so it is reserved. Relist with
-  `curl -X POST https://closer-9a91.onrender.com/api/demo/reset` (the session was not allowed to run it).
+- Demo items relisted after testing (`/api/demo/reset`, 11 Nov).
 - Three leftover "Laptop" test listings show in the dashboard and popup. Not deleted (needs the owner's OK).
 
 **Next:** seller-side Facebook test, then Kijiji (open a conversation on an ad you posted, buyer wrote last,
