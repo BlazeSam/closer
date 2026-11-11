@@ -34,6 +34,11 @@ describe("extension wiring", () => {
     const m = JSON.parse(read("extension/manifest.json"));
     expect(m.permissions).toEqual(["storage"]);
     expect(m.host_permissions).toContain("https://www.facebook.com/messages/*");
+    expect(m.host_permissions).toEqual(expect.arrayContaining(["https://closer-9a91.onrender.com/*", "https://www.kijiji.ca/m-msg-my-messages/*"]));
+    expect(m.content_scripts[0].matches).toContain("https://closer-9a91.onrender.com/demo/marketplace*");
+    expect(m.content_scripts[0].matches).toContain("https://www.kijiji.ca/m-msg-my-messages/*");
+    expect(bg).toContain('"KIJIJI"');
+    expect(read("extension/selectors.js")).toContain('channel: "KIJIJI"');
     expect(read("extension/popup.html")).not.toMatch(/<input[^>]*id="auto"[^>]*checked/);
   });
 });

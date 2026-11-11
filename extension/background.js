@@ -1,6 +1,6 @@
 // Service worker. The ONLY place that talks to the Closer backend, and the only place the token is read.
 // The token goes in the POST body, never in a URL.
-const DEFAULT_APP_URL = "http://localhost:3100";
+const DEFAULT_APP_URL = "https://closer-9a91.onrender.com"; // localhost:3100 still works if typed in the popup
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg?.type !== "closer-reply" || sender.id !== chrome.runtime.id || !sender.url) return;
@@ -19,7 +19,8 @@ async function reply({ threadId, listingSlug, buyerMessage }, sender) {
   }
 
   // Derived here from the sender, not trusted from the page.
-  const channel = new URL(sender.url).hostname === "www.facebook.com" ? "FB_MARKETPLACE" : "MOCK";
+  const host = new URL(sender.url).hostname;
+  const channel = host === "www.facebook.com" ? "FB_MARKETPLACE" : host === "www.kijiji.ca" ? "KIJIJI" : "MOCK";
   const r = await fetch(`${origin}/api/extension/reply`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

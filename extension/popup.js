@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const DEFAULT_APP_URL = "http://localhost:3100";
+const DEFAULT_APP_URL = "https://closer-9a91.onrender.com"; // localhost:3100 still works if typed
 
 async function load() {
   const s = await chrome.storage.local.get(["token", "listingSlug", "appUrl", "autoSend"]);

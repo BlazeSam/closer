@@ -32,16 +32,29 @@ if (typeof document !== "undefined") {
 
     const composerText = (el) => ("value" in el ? el.value : el.innerText) || "";
 
+    const landed = (el, text) => composerText(el).includes(text.slice(0, 20));
+
+    // Never throws: any failure returns false so the caller shows the reply in the badge instead of losing it.
     function insertDraft(el, text) {
-      el.focus();
-      if (el.isContentEditable) {
-        document.execCommand("selectAll");
-        document.execCommand("insertText", false, text);
-      } else {
-        Object.getOwnPropertyDescriptor(Object.getPrototypeOf(el), "value").set.call(el, text);
-        el.dispatchEvent(new Event("input", { bubbles: true }));
+      try {
+        el.focus();
+        if (el.isContentEditable) {
+          document.execCommand("selectAll");
+          if (document.execCommand("insertText", false, text) && landed(el, text)) return true;
+          // Fallback for editors that ignore execCommand: a paste-style event carrying the text.
+          const dt = new DataTransfer();
+          dt.setData("text/plain", text);
+          el.dispatchEvent(new InputEvent("beforeinput", { bubbles: true, cancelable: true, inputType: "insertFromPaste", data: text, dataTransfer: dt }));
+          if (!landed(el, text)) el.dispatchEvent(new ClipboardEvent("paste", { bubbles: true, cancelable: true, clipboardData: dt }));
+        } else {
+          // Native setter so React-controlled inputs see the change.
+          Object.getOwnPropertyDescriptor(Object.getPrototypeOf(el), "value").set.call(el, text);
+          el.dispatchEvent(new Event("input", { bubbles: true }));
+        }
+        return landed(el, text);
+      } catch {
+        return false;
       }
-      return composerText(el).includes(text.slice(0, 20));
     }
 
     async function tick() {

@@ -6,7 +6,7 @@
 // The FACEBOOK selectors are best guesses and are EXPECTED TO BREAK: Facebook ships DOM changes without
 // notice and uses generated class names. When drafting stops working on facebook.com, THIS is the file to fix
 // (inspect the thread, update messages/isInbound/composer/send below). content.js should not need to change.
-// They have not been verified against the live site.
+// They have not been verified against the live site. The KIJIJI set further down is the same: unverified.
 //
 // Each platform implements: channel, matches(), threadId(), messages(), isInbound(el), text(el), id(el)
 // (stable id or null), composer(), send(), listingHint() (optional default listing slug).
@@ -53,6 +53,36 @@ const CLOSER_FACEBOOK = {
   send: () => document.querySelector('[role="main"] [aria-label="Press enter to send"], [role="main"] [aria-label="Send"]'),
 };
 
+// KIJIJI: UNVERIFIED GUESSES, written without being able to log in to kijiji.ca. Expected to break; fix here.
+// Deliberately uses roles / aria / textarea / contenteditable rather than Kijiji's generated class names.
+// Direction is guessed from screen position (same rule as Facebook); unknown means "not inbound".
+const CLOSER_KIJIJI = {
+  channel: "KIJIJI",
+  matches: () => location.hostname === "www.kijiji.ca" && location.pathname.startsWith("/m-msg-my-messages"),
+  // Guess: /m-msg-my-messages/.../conversation/<id> or a ?conversationId=<id> style query.
+  threadId: () =>
+    /\/conversations?\/([^/?#]+)/.exec(location.pathname)?.[1] ||
+    ["conversationId", "conversation", "threadId", "id"].map((k) => new URLSearchParams(location.search).get(k)).find(Boolean) ||
+    null,
+  messages: () => [
+    ...document.querySelectorAll(
+      '[role="log"] [role="listitem"], [role="log"] li, [aria-live] li, [data-testid*="message" i], [class*="message-bubble" i], [class*="messageBubble" i], [class*="MessageBubble"]',
+    ),
+  ],
+  isInbound: (el) => {
+    const main = (document.querySelector('[role="main"], main') || document.body).getBoundingClientRect();
+    return closerRectIsInbound(main, el.getBoundingClientRect());
+  },
+  text: (el) => (el.textContent || "").trim(),
+  id: (el) => el.getAttribute("data-message-id") || el.getAttribute("data-testid") || null,
+  composer: () =>
+    document.querySelector('[role="main"] textarea, main textarea, [role="main"] [contenteditable="true"], main [contenteditable="true"], textarea[aria-label*="message" i], textarea[placeholder*="message" i]'),
+  send: () =>
+    document.querySelector('button[aria-label*="send" i], [role="button"][aria-label*="send" i], form button[type="submit"]') ||
+    [...document.querySelectorAll("button")].find((b) => /^send$/i.test((b.textContent || "").trim())) ||
+    null,
+};
+
 function closerPlatform() {
-  return [CLOSER_MOCK, CLOSER_FACEBOOK].find((p) => p.matches()) || null;
+  return [CLOSER_MOCK, CLOSER_FACEBOOK, CLOSER_KIJIJI].find((p) => p.matches()) || null;
 }
