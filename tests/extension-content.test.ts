@@ -64,3 +64,24 @@ describe("facebook direction heuristic", () => {
     expect(fn({ left: 0, width: 0 }, { left: 10, width: 200, height: 20 })).toBe(false);
   });
 });
+
+describe("listing page reader", () => {
+  const parse = new Function(`${read("extension/selectors.js")}; return closerParsePrice;`)() as (s: unknown) => number | null;
+
+  it("reads marketplace price text and treats free or missing as unknown", () => {
+    expect(parse("CA$1,200")).toBe(1200);
+    expect(parse("$150.00")).toBe(150);
+    expect(parse("C$ 80")).toBe(80);
+    expect(parse("Free")).toBeNull();
+    expect(parse(null)).toBeNull();
+    expect(parse("$0")).toBeNull();
+  });
+
+  it("injects the reader only on marketplace pages, never with the reply drafter", () => {
+    const m = JSON.parse(read("extension/manifest.json"));
+    const entry = m.content_scripts.find((c: { js: string[] }) => c.js.includes("listing.js"));
+    expect(entry.matches).toEqual(["https://www.facebook.com/marketplace/*"]);
+    expect(entry.js).not.toContain("content.js");
+    expect(m.host_permissions).toContain("https://www.facebook.com/marketplace/*");
+  });
+});

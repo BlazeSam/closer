@@ -92,3 +92,44 @@ const CLOSER_KIJIJI = {
 function closerPlatform() {
   return [CLOSER_MOCK, CLOSER_FACEBOOK, CLOSER_KIJIJI].find((p) => p.matches()) || null;
 }
+
+// ---- Reading YOUR OWN listing page, for "Add to Closer" (listing.js). Read-only. Unknown means null. ----
+
+// Pure: "CA$1,200", "$150.00", "€80" -> whole dollars; "Free" or no number -> null.
+function closerParsePrice(s) {
+  const m = /(?:[$€£]|CA\$|C\$)\s?(\d[\d,]*(?:\.\d{1,2})?)/.exec(String(s || ""));
+  const n = m ? Math.round(Number(m[1].replace(/,/g, ""))) : NaN;
+  return n > 0 ? n : null;
+}
+
+const closerMeta = (prop) => document.querySelector(`meta[property="${prop}"], meta[name="${prop}"]`)?.getAttribute("content")?.trim() || null;
+const closerVisible = (el) => Boolean(el && el.getClientRects().length);
+
+// Facebook Marketplace item page, /marketplace/item/<id>/. UNVERIFIED until checked on a live listing.
+// Open Graph tags first (server-rendered, stable), visible DOM as fallback.
+const CLOSER_FB_LISTING = {
+  source: "facebook",
+  matches: () => location.hostname === "www.facebook.com" && /^\/marketplace\/item\/\d+/.test(location.pathname),
+  read: () => {
+    const main = document.querySelector('[role="main"]') || document.body;
+    const title = [...main.querySelectorAll("h1")].find(closerVisible)?.textContent?.trim() || closerMeta("og:title");
+    // The price is a leaf span near the title whose whole text is a price ("CA$150").
+    const priceEl = [...main.querySelectorAll("span")].find((el) => !el.children.length && closerVisible(el) && /^\s*(CA|C)?[$€£]\s?\d/.test(el.textContent || ""));
+    // "Condition" label, value in the next text node along.
+    const label = [...main.querySelectorAll("span")].find((el) => (el.textContent || "").trim() === "Condition");
+    const condRow = label?.closest("div")?.parentElement;
+    const condition = condRow ? [...condRow.querySelectorAll("span")].map((el) => el.textContent.trim()).find((t) => t && t !== "Condition") || null : null;
+    const img = [...main.querySelectorAll('img[alt^="Product photo of"]')].find(closerVisible)?.src || closerMeta("og:image");
+    return {
+      title: title ? title.slice(0, 120) : null,
+      price: closerParsePrice(priceEl?.textContent) ?? closerParsePrice(closerMeta("og:title")),
+      description: closerMeta("og:description"),
+      condition: condition ? condition.slice(0, 60) : null,
+      imageUrl: img && img.startsWith("https://") ? img : null,
+    };
+  },
+};
+
+function closerListingPage() {
+  return [CLOSER_FB_LISTING].find((p) => p.matches()) || null;
+}

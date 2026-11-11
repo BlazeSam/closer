@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Closer reply drafter",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Drafts replies to buyer messages from your Closer listing. Independent tool, not affiliated with any marketplace.",
   "permissions": [
     "storage"
@@ -10,7 +10,8 @@
     "http://localhost:3100/*",
     "https://closer-9a91.onrender.com/*",
     "https://www.facebook.com/messages/*",
-    "https://www.kijiji.ca/m-msg-my-messages/*"
+    "https://www.kijiji.ca/m-msg-my-messages/*",
+    "https://www.facebook.com/marketplace/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -42,6 +43,16 @@
         "pair.js"
       ],
       "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "https://www.facebook.com/marketplace/*"
+      ],
+      "js": [
+        "selectors.js",
+        "listing.js"
+      ],
+      "run_at": "document_idle"
     }
   ]
 }

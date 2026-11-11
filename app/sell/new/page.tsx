@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import SellerGate from "../../../components/SellerGate";
 
 const field = "w-full rounded border px-3 py-2 text-sm";
@@ -22,6 +22,23 @@ export default function NewListing() {
   const [draftNote, setDraftNote] = useState("");
   const [preview, setPreview] = useState("");
   const form = useRef<HTMLFormElement>(null);
+  const [imported, setImported] = useState("");
+
+  // "Add to Closer" in the extension opens this page with the marketplace listing in the query string.
+  // Fill what it read; the seller still sets the two private prices.
+  useEffect(() => {
+    const q = new URLSearchParams(location.search);
+    if (!q.get("from")) return;
+    const f = form.current;
+    if (!f) return;
+    for (const [name, key] of [["title", "title"], ["description", "description"], ["condition", "condition"], ["imageUrl", "imageUrl"], ["ask", "price"]]) {
+      const v = q.get(key);
+      const el = f.elements.namedItem(name) as HTMLInputElement | null;
+      if (v && el) el.value = v;
+    }
+    if (q.get("imageUrl")) setPreview(q.get("imageUrl")!);
+    setImported(q.get("from") === "facebook" ? "Facebook" : "your listing");
+  }, []);
 
   // Fills the form in place. The seller edits every value before anything is saved.
   function applyDraft(d: Draft) {
@@ -90,6 +107,11 @@ export default function NewListing() {
     <SellerGate>
       <form ref={form} onSubmit={submit} className="mx-auto max-w-lg space-y-3">
         <h1 className="text-2xl font-bold">Create listing</h1>
+        {imported && (
+          <p className="rounded bg-blue-50 p-3 text-sm">
+            Filled in from {imported}. Check the details, then set your lowest price and auto-accept price below.
+          </p>
+        )}
 
         <div className="rounded border border-dashed bg-slate-50 p-3">
           <label className="block text-sm font-medium">Start from a photo</label>
