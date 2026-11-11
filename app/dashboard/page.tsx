@@ -1,27 +1,55 @@
 "use client";
-import { AllCommunityModule, ModuleRegistry, type ColDef } from "ag-grid-community";
+import { AllCommunityModule, ModuleRegistry, themeQuartz, type ColDef, type GridApi, type GridReadyEvent } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import SellerGate from "../../components/SellerGate";
 
-ModuleRegistry.registerModules([AllCommunityModule]);
+ModuleRegistry.registerModules([AllCommunityModule]); // Community only: no Enterprise modules, no license key
 
-type Row = { id: string; listing: string; buyer: string; status: string; lastOffer: number | null; counter: number | null; agreed: number | null; paypal: string; updatedAt: string };
+type Row = { id: string; listing: string; buyer: string; channel: string; status: string; currency: string; asking: number | null; lastOffer: number | null; counter: number | null; agreed: number | string | null; round: number | null; paypal: string; updatedAt: string };
 type Approval = { id: string; kind: "PRICE" | "CUSTOM"; details: { offerCents?: number; question?: string }; buyer: string; listing: string; currency: string };
 type Detail = { id: string; status: string; paypalInvoiceId: string | null; buyerEmail: string | null; messages: { role: string; content: string }[]; audit: { type: string; payload: unknown; createdAt: string }[] };
 
-const money = (p: { value: number | null }) => (p.value == null ? "" : `$${(p.value / 100).toFixed(2).replace(/\.00$/, "")}`);
+const fmt = (cents: number, currency: string) => new Intl.NumberFormat("en-US", { style: "currency", currency, minimumFractionDigits: cents % 100 ? 2 : 0, maximumFractionDigits: 2 }).format(cents / 100);
+const money = (p: { value: number | string | null; data?: Row }) => (p.value == null ? "" : typeof p.value === "string" ? p.value : fmt(p.value, p.data?.currency ?? "USD"));
 const PILL: Record<string, string> = { OPEN: "#e0f2fe", AWAITING_APPROVAL: "#fef3c7", AGREED: "#dcfce7", PAID: "#86efac", DECLINED: "#fee2e2", EXPIRED: "#e5e7eb", TAKEN_OVER: "#ede9fe" };
 
+function ago(iso: string) {
+  const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
+  if (s < 60) return "just now";
+  if (s < 3600) return `${Math.floor(s / 60)} min ago`;
+  if (s < 86400) return `${Math.floor(s / 3600)} hr ago`;
+  return `${Math.floor(s / 86400)} d ago`;
+}
+
+const CHIPS = [
+  { label: "All", statuses: [] as string[] },
+  { label: "Open", statuses: ["OPEN"] },
+  { label: "Needs approval", statuses: ["AWAITING_APPROVAL"] },
+  { label: "Agreed", statuses: ["AGREED"] },
+  { label: "Paid", statuses: ["PAID"] },
+  { label: "Closed", statuses: ["DECLINED", "EXPIRED", "TAKEN_OVER"] },
+];
+
+const theme = themeQuartz.withParams({ backgroundColor: "#ffffff", foregroundColor: "#0f172a", headerBackgroundColor: "#f8fafc", borderColor: "#e2e8f0", accentColor: "#0f172a", fontSize: 13, rowHeight: 34, headerHeight: 36 });
+
 const cols: ColDef<Row>[] = [
-  { field: "listing", flex: 1.4 },
-  { field: "buyer", flex: 1.2 },
-  { field: "status", cellRenderer: (p: { value: string }) => <span style={{ background: PILL[p.value] ?? "#eee", padding: "2px 8px", borderRadius: 999, fontSize: 12 }}>{p.value}</span> },
-  { field: "lastOffer", headerName: "Last offer", valueFormatter: money, width: 110 },
-  { field: "counter", headerName: "Counter", valueFormatter: money, width: 100 },
-  { field: "agreed", headerName: "Agreed", valueFormatter: money, width: 100 },
-  { field: "paypal", headerName: "PayPal" },
-  { field: "updatedAt", headerName: "Last activity", valueFormatter: (p) => new Date(p.value).toLocaleTimeString(), width: 120 },
+  { field: "listing", flex: 1.4, minWidth: 160, filter: "agTextColumnFilter" },
+  { field: "buyer", flex: 1.2, minWidth: 140, filter: "agTextColumnFilter" },
+  { field: "channel", headerName: "Channel", minWidth: 130, filter: "agTextColumnFilter" },
+  { field: "status", minWidth: 150, filter: "agTextColumnFilter", filterParams: { maxNumConditions: 3 }, cellRenderer: (p: { value: string }) => <span style={{ background: PILL[p.value] ?? "#eee", padding: "2px 8px", borderRadius: 999, fontSize: 12 }}>{p.value}</span> },
+  { field: "asking", headerName: "Asking", valueFormatter: money, width: 100, filter: "agNumberColumnFilter" },
+  { field: "lastOffer", headerName: "Last offer", valueFormatter: money, width: 110, filter: "agNumberColumnFilter" },
+  { field: "counter", headerName: "Counter", valueFormatter: money, width: 100, filter: "agNumberColumnFilter" },
+  { field: "agreed", headerName: "Agreed", valueFormatter: money, width: 100, filter: "agNumberColumnFilter" },
+  {
+    headerName: "% of asking", width: 120, filter: "agNumberColumnFilter",
+    valueGetter: (p) => (typeof p.data?.agreed === "number" && p.data.asking ? Math.round((p.data.agreed / p.data.asking) * 100) : null),
+    valueFormatter: (p) => (p.value == null ? "" : `${p.value}%`),
+  },
+  { field: "round", headerName: "Rounds", width: 100, filter: "agNumberColumnFilter" },
+  { field: "paypal", headerName: "PayPal", minWidth: 120, filter: "agTextColumnFilter" },
+  { field: "updatedAt", headerName: "Last activity", width: 130, sort: "desc", filter: false, valueFormatter: (p) => (p.value ? ago(p.value) : ""), tooltipValueGetter: (p) => (p.value ? new Date(p.value).toLocaleString() : "") },
 ];
 
 // Mints a pairing token for the browser extension. The server returns the plaintext once; only a hash is stored.
@@ -174,6 +202,38 @@ function Dashboard() {
   const [approvals, setApprovals] = useState<Approval[]>([]);
   const [detail, setDetail] = useState<Detail>();
   const [reply, setReply] = useState<Record<string, string>>({});
+  const gridApi = useRef<GridApi<Row> | null>(null);
+  const [quick, setQuick] = useState("");
+  const [chip, setChip] = useState("All");
+  const [pinned, setPinned] = useState<Partial<Row>[]>([]);
+  const counts = useMemo(() => Object.fromEntries(CHIPS.map((c) => [c.label, c.statuses.length ? rows.filter((r) => c.statuses.includes(r.status)).length : rows.length])), [rows]);
+
+  // Summary of the rows passing the current filters. Pinned data is only set when it changed, so polling does not churn the grid.
+  const summarize = useCallback(() => {
+    const api = gridApi.current;
+    if (!api) return;
+    let n = 0, paid = 0, total = 0;
+    const cur = new Set<string>();
+    api.forEachNodeAfterFilter((node) => {
+      if (!node.data) return;
+      n++;
+      if (node.data.status === "PAID" && typeof node.data.agreed === "number") { paid++; total += node.data.agreed; cur.add(node.data.currency); }
+    });
+    const next = [{ id: "summary", listing: `${n} negotiation${n === 1 ? "" : "s"} shown`, status: `${paid} paid`, agreed: cur.size > 1 ? "mixed" : paid ? total : null, currency: [...cur][0] ?? "USD" }];
+    setPinned((prev) => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next));
+  }, []);
+
+  // Keep the chip highlight in sync with whatever the status column filter currently holds.
+  const syncChip = useCallback(() => {
+    const m = gridApi.current?.getFilterModel()?.status;
+    const vals: string[] = !m ? [] : m.conditions ? m.conditions.map((c: { filter: string }) => c.filter) : [m.filter];
+    setChip(CHIPS.find((c) => c.statuses.length === vals.length && c.statuses.every((s) => vals.includes(s)))?.label ?? "");
+  }, []);
+
+  function pickChip(statuses: string[]) {
+    const model = !statuses.length ? null : statuses.length === 1 ? { filterType: "text", type: "equals", filter: statuses[0] } : { filterType: "text", operator: "OR", conditions: statuses.map((s) => ({ filterType: "text", type: "equals", filter: s })) };
+    gridApi.current?.setColumnFilterModel("status", model).then(() => gridApi.current?.onFilterChanged());
+  }
 
   const open = useCallback(async (id: string) => {
     const r = await fetch(`/api/seller/negotiations/${id}`);
@@ -212,7 +272,7 @@ function Dashboard() {
             <li key={a.id} className="rounded border bg-white p-3 text-sm">
               <div className="font-medium">{a.listing} · {a.buyer}</div>
               <div className="text-slate-700">
-                {a.kind === "PRICE" ? `Buyer offers $${((a.details.offerCents ?? 0) / 100).toFixed(2)}` : `Question: ${a.details.question}`}
+                {a.kind === "PRICE" ? `Buyer offers ${new Intl.NumberFormat("en-US", { style: "currency", currency: a.currency }).format((a.details.offerCents ?? 0) / 100)}` : `Question: ${a.details.question}`}
               </div>
               <div className="mt-2 flex gap-2">
                 {a.kind === "CUSTOM" && <input value={reply[a.id] ?? ""} onChange={(e) => setReply({ ...reply, [a.id]: e.target.value })} placeholder="Your reply to the buyer" className="flex-1 rounded border px-2 py-1" />}
@@ -225,14 +285,36 @@ function Dashboard() {
       </section>
 
       <section>
-        <h2 className="mb-2 font-semibold">Negotiations <span className="text-xs font-normal text-slate-500">(click a row for transcript + audit log)</span></h2>
-        <div style={{ height: 320 }}>
+        <h2 className="mb-2 font-semibold">Negotiations <span className="text-xs font-normal text-slate-500">(select a row for transcript + audit log)</span></h2>
+        <div className="mb-2 flex flex-wrap items-center gap-2 text-sm">
+          {CHIPS.map((c) => (
+            <button key={c.label} onClick={() => pickChip(c.statuses)} className={`rounded-full border px-3 py-0.5 ${chip === c.label ? "bg-slate-900 text-white" : "bg-white"}`}>
+              {c.label} <span className="opacity-70">{counts[c.label]}</span>
+            </button>
+          ))}
+          <input value={quick} onChange={(e) => setQuick(e.target.value)} placeholder="Search all columns..." className="ml-auto w-56 rounded border px-2 py-1" />
+          <button onClick={() => gridApi.current?.exportDataAsCsv({ fileName: "negotiations.csv" })} className="rounded border bg-white px-3 py-1">Export CSV</button>
+        </div>
+        <div style={{ height: 540 }}>
           <AgGridReact<Row>
+            theme={theme}
             rowData={rows}
             columnDefs={cols}
-            defaultColDef={{ sortable: true, resizable: true }}
+            defaultColDef={{ sortable: true, resizable: true, floatingFilter: true }}
             getRowId={(p) => p.data.id}
-            onRowClicked={(e) => open(e.data!.id)}
+            quickFilterText={quick}
+            rowSelection={{ mode: "singleRow", checkboxes: false, enableClickSelection: true }}
+            pagination
+            paginationPageSize={20}
+            paginationPageSizeSelector={false}
+            animateRows
+            tooltipShowDelay={300}
+            pinnedBottomRowData={pinned}
+            rowClassRules={{ "row-awaiting": (p) => p.data?.status === "AWAITING_APPROVAL", "row-paid": (p) => p.data?.status === "PAID" }}
+            onGridReady={(e: GridReadyEvent<Row>) => { gridApi.current = e.api; summarize(); }}
+            onModelUpdated={summarize}
+            onFilterChanged={() => { syncChip(); summarize(); }}
+            onSelectionChanged={(e) => { const r = e.api.getSelectedRows()[0]; if (r) open(r.id); }}
           />
         </div>
       </section>

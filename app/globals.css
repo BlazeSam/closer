@@ -4,3 +4,6 @@ body {
   background: #f8fafc;
   color: #0f172a;
 }
+
+.row-awaiting { background-color: #fef3c7 !important; }
+.row-paid { background-color: #dcfce7 !important; }
