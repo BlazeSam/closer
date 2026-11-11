@@ -14,8 +14,10 @@ type SellerReply = { negotiationId: string; reply: string; status: string; price
 
 const MAX_TURNS = 10;
 
-async function send(origin: string, slug: string, body: object): Promise<SellerReply> {
-  const res = await fetch(`${origin}/api/agent/listings/${slug}/negotiate`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+// The call is server-to-server, so without this every visitor would share one IP against the seller's
+// per-IP limits. Pass the real visitor's IP along instead.
+async function send(origin: string, slug: string, body: object, clientIp: string): Promise<SellerReply> {
+  const res = await fetch(`${origin}/api/agent/listings/${slug}/negotiate`, { method: "POST", headers: { "Content-Type": "application/json", "x-forwarded-for": clientIp }, body: JSON.stringify(body) });
   if (!res.ok) throw new Error(`seller API ${res.status}: ${await res.text()}`);
   return res.json();
 }
@@ -31,7 +33,7 @@ async function poll(origin: string, id: string) {
 
 const hasKey = () => Boolean(process.env.AI_PROVIDER === "openai" ? process.env.OPENAI_API_KEY : process.env.ANTHROPIC_API_KEY);
 
-export async function* runBuyerAgent(p: { origin: string; slug: string; maxBudgetCents: number; instructions: string }): AsyncGenerator<BuyerEvent> {
+export async function* runBuyerAgent(p: { origin: string; clientIp: string; slug: string; maxBudgetCents: number; instructions: string }): AsyncGenerator<BuyerEvent> {
   const info = await (await fetch(`${p.origin}/api/agent/listings/${p.slug}`)).json();
   if (info.error) throw new Error(info.error);
   const ask: number = info.askCents;
@@ -44,7 +46,7 @@ export async function* runBuyerAgent(p: { origin: string; slug: string; maxBudge
   // One step of the loop. `wanted` is what the buyer brain proposes; code clamps it to budget.
   const step = async (message: string, wanted?: number): Promise<SellerReply> => {
     const offerCents = wanted === undefined ? undefined : Math.min(Math.max(1, Math.round(wanted)), p.maxBudgetCents);
-    return (last = await send(p.origin, p.slug, { negotiationId, buyerLabel: "buyer-agent", message, offerCents }));
+    return (last = await send(p.origin, p.slug, { negotiationId, buyerLabel: "buyer-agent", message, offerCents }, p.clientIp));
   };
 
   const events: BuyerEvent[] = [];
