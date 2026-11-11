@@ -50,7 +50,8 @@ Dev server is pinned to **http://localhost:3100**.
 npm test
 ```
 
-79 tests, all passing as of `ef290f3`. Typecheck clean. `npm run build` passes.
+81 tests. As of 10 Nov only the 68 that do not touch the database were re-run (all pass); the rest
+last passed at `ef290f3`. Typecheck clean.
 
 ## 3. Current state
 
@@ -82,22 +83,39 @@ npm test
 - Email notifications (Resend). Cut: PayPal already emails the buyer the invoice.
 - MCP server. Worthless until deployed — a stdio server means every judge has to clone the repo.
 
+### Added 10 Nov (deployed at https://closer-9a91.onrender.com, Render, auto-deploys from `main`)
+
+- **Paste mode** — dashboard, "Reply to a buyer on another site" (`POST /api/seller/reply`). Run in a
+  browser locally through to an agreed deal and a payment link.
+- **Invoice button** — select an AGREED row in the dashboard. The form renders; a real invoice was
+  **not** sent from the button (the route itself was proven earlier).
+- **AG Grid dashboard** — filters, status chips, summary row, CSV export. Checked in a browser.
+- **Extension** — Render origin and Kijiji added. Still never loaded in real Chrome.
+- **Fixed on the live site:** buyer chat crashed on the first reply (Chrome returns a Promise from
+  `scrollIntoView`); the landing duel failed with "fetch failed" (server could not reach itself
+  behind Render's proxy); payment links pointed at `closer.onrender.com` (wrong `APP_URL`; the app
+  now prefers `RENDER_EXTERNAL_URL`); bare-number offers ("take 100?") lost the model's reply and
+  burned rounds; an offer plus a question in one message closed the chat.
+- The landing page now lists only the three demo slugs (`DEMO_SLUGS` in `lib/publicListing.ts`).
+
+Hackathon facts (from the Devpost rules): deadline **Thu 12 Nov, 12:00 pm Pacific**. The demo must
+stay up, free, until judging ends **15 Dec**. One Grand or Honorable Mention prize plus one Sponsor
+prize per project. The video may not show third-party trademarks, so film `/demo/marketplace`.
+
 ## 4. What is left, in order
 
-1. **Deploy.** Nothing else scores without a clickable URL. Needs a Vercel (or similar) account.
-   Env vars to set: `DATABASE_URL`, `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`,
-   `PAYPAL_ENVIRONMENT=sandbox`, `NEXT_PUBLIC_PAYPAL_CLIENT_ID`, `APP_URL` (the deployed origin),
-   `ANTHROPIC_API_KEY`, `SELLER_PASSWORD`, `CURRENCY`.
-2. **Set `PAYPAL_WEBHOOK_ID`.** Registering a webhook needs a public URL, so this can only happen
-   after step 1. Until it is set the webhook route returns **503** rather than trusting an
-   unverified event. Register the endpoint at `<APP_URL>/api/paypal/webhook` for
-   `INVOICING.INVOICE.PAID`, copy the webhook id into env, then send a test event from the
-   PayPal dashboard.
+1. **Fill the four `TODO(you)` values** in `README.md` (and the matching slots in
+   `docs/DEVPOST.md`): YouTube link, demo seller password, PayPal sandbox buyer email and password.
+2. **Set `PAYPAL_WEBHOOK_ID` on Render** if not done. Register `<site>/api/paypal/webhook` for
+   `INVOICING.INVOICE.PAID`. Until it is set the route returns **503** and invoice payments are not
+   recorded. Then send one real sandbox invoice from the dashboard button and pay it.
 3. **Load the extension in real Chrome.** `chrome://extensions` → Developer mode → Load unpacked →
-   `extension/`. Then open `/demo/marketplace` and fix whatever the selectors miss.
-4. **Demo video + Devpost copy.** Lead with the landing-page duel. The PayPal-usage section of the
-   submission is worth writing carefully: Orders v2 *and* Invoicing v2, signature-verified webhooks,
-   idempotent capture.
+   `extension/`. Try `/demo/marketplace` on the deployed site first, then a real chat, and fix
+   `extension/selectors.js` against the real page.
+4. **Do one real sale with paste mode** and write down the numbers. The "Potential Impact"
+   criterion wants evidence, not features.
+5. **Demo video + Devpost submission.** Copy is in `docs/DEVPOST.md`.
+6. Set an Anthropic spend limit. The public demo calls the model for every visitor until 15 Dec.
 
 ## 5. Security invariants — do not break these
 

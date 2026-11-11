@@ -191,7 +191,7 @@ dashboard. It expects an external Postgres such as Neon.
 npm test
 ```
 
-79 tests: the price policy (including a 1000-case property test that nothing is ever decided below
+81 tests: the price policy (including a 1000-case property test that nothing is ever decided below
 the minimum), the output guard, capture and invoice verification, floor probing, concurrency, the
 buyer-facing trace redaction and the extension.
 

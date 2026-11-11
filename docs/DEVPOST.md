@@ -91,6 +91,27 @@ seller dashboard is built on AG Grid, and the app is hosted on Render.
 Paying twice or replaying a webhook changes nothing. A payment that does not match the agreed amount,
 currency and negotiation is logged and ignored.
 
+### How we used AG Grid
+
+The seller dashboard is an AG Grid (Community) and it is where the seller actually works:
+
+- Every negotiation across every channel in one grid: web chat, buyer agents, pasted marketplace
+  threads and the browser extension, with asking price, last offer, counter, agreed price, percent
+  of asking, rounds used and PayPal state. Money is formatted per row in the listing's currency.
+- Column filters with floating filters, a quick search across all columns, and status chips with
+  live counts that drive the grid's filter model through the grid API.
+- Selecting a row opens that deal's transcript, its audit log and the PayPal invoice form.
+- Rows update in place every three seconds (`getRowId`), so selection, filters and scroll survive.
+- Row tints for deals waiting on the seller and deals paid, a pinned summary row computed from the
+  rows that pass the current filter, pagination, and CSV export.
+- Styled with the Quartz Theming API to match the rest of the app.
+
+### How we used Render
+
+The app runs as a Render web service from a `render.yaml` blueprint. The public URL that payment
+links and the agent API advertise is read from Render's `RENDER_EXTERNAL_URL`, so a link can never
+point at the wrong host.
+
 ### Tools (AI)
 
 - **Anthropic Claude (`claude-haiku-5-5`) through the Vercel AI SDK.** It runs three things:
