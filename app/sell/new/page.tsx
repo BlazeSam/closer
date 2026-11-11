@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import SellerGate from "../../../components/SellerGate";
 
 const field = "w-full rounded border px-3 py-2 text-sm";
+const label = "block text-sm font-medium";
 
 type Draft = {
   title: string;
@@ -15,52 +16,58 @@ type Draft = {
   rationale: string;
 };
 
+const DELIVERY = { pickup: "Pickup only", shipping: "Can ship", both: "Pickup or shipping" } as const;
+
 export default function NewListing() {
+  // The form mounts only after the password gate passes, so its effects see the real form.
+  return (
+    <SellerGate>
+      <ListingForm />
+    </SellerGate>
+  );
+}
+
+function ListingForm() {
   const [link, setLink] = useState("");
   const [err, setErr] = useState("");
   const [drafting, setDrafting] = useState(false);
-  const [draftNote, setDraftNote] = useState("");
+  const [draft, setDraft] = useState<Draft | null>(null);
   const [preview, setPreview] = useState("");
-  const form = useRef<HTMLFormElement>(null);
   const [imported, setImported] = useState("");
+  const form = useRef<HTMLFormElement>(null);
+
+  const set = (name: string, value: string) => {
+    const el = form.current?.elements.namedItem(name) as HTMLInputElement | HTMLTextAreaElement | null;
+    if (el) el.value = value;
+  };
 
   // "Add to Closer" in the extension opens this page with the marketplace listing in the query string.
-  // Fill what it read; the seller still sets the two private prices.
+  // Fill what it read; the seller still answers the questions below.
   useEffect(() => {
     const q = new URLSearchParams(location.search);
     if (!q.get("from")) return;
-    const f = form.current;
-    if (!f) return;
     for (const [name, key] of [["title", "title"], ["description", "description"], ["condition", "condition"], ["imageUrl", "imageUrl"], ["ask", "price"]]) {
       const v = q.get(key);
-      const el = f.elements.namedItem(name) as HTMLInputElement | null;
-      if (v && el) el.value = v;
+      if (v) set(name, v);
     }
     if (q.get("imageUrl")) setPreview(q.get("imageUrl")!);
     setImported(q.get("from") === "facebook" ? "Facebook" : "your listing");
   }, []);
 
-  // Fills the form in place. The seller edits every value before anything is saved.
+  // The photo answers what it can. The two private prices are left for the seller to answer: the draft's
+  // guesses are shown next to the questions, never saved without the seller typing them in.
   function applyDraft(d: Draft) {
-    const f = form.current;
-    if (!f) return;
-    const set = (name: string, value: string) => {
-      const el = f.elements.namedItem(name) as HTMLInputElement | HTMLTextAreaElement | null;
-      if (el) el.value = value;
-    };
     set("title", d.title);
     set("description", d.description);
     set("condition", d.condition);
-    set("notes", d.notes);
+    set("area", d.notes);
     set("ask", String(d.askDollars));
-    set("autoAccept", String(d.autoAcceptDollars));
-    set("floor", String(d.floorDollars));
-    setDraftNote(d.rationale);
+    setDraft(d);
   }
 
   async function draftFromPhoto(file: File) {
     setErr("");
-    setDraftNote("");
+    setDraft(null);
     setDrafting(true);
     try {
       const imageDataUrl = await new Promise<string>((resolve, reject) => {
@@ -89,70 +96,108 @@ export default function NewListing() {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     const num = (k: string) => Number(f.get(k));
+    const str = (k: string) => String(f.get(k) ?? "").trim();
     setErr("");
+    // Same rule the server enforces, said in plain words before the round trip.
+    if (!(num("floor") <= num("autoAccept") && num("autoAccept") <= num("ask"))) {
+      return setErr("Your lowest price must be at or below your “yes straight away” price, and that must be at or below the asking price.");
+    }
+    const extra = str("extra");
+    const delivery = DELIVERY[str("delivery") as keyof typeof DELIVERY] ?? "";
     const r = await fetch("/api/seller/listings", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        title: f.get("title"), description: f.get("description"), condition: f.get("condition"), imageUrl: f.get("imageUrl"), notes: f.get("notes"),
-        ask: num("ask"), floor: num("floor"), autoAccept: num("autoAccept"),
+        title: str("title"),
+        description: [str("description"), extra && `Seller notes: ${extra}`].filter(Boolean).join("\n\n").slice(0, 2000),
+        condition: str("condition") || "Used",
+        imageUrl: str("imageUrl"),
+        notes: [delivery, str("area")].filter(Boolean).join(". ").slice(0, 500),
+        ask: num("ask"),
+        floor: num("floor"),
+        autoAccept: num("autoAccept"),
       }),
     });
     const j = await r.json();
     if (r.ok) setLink(j.url);
-    else setErr(j.error ?? "failed");
+    else setErr(j.error ?? "Could not save. Check the fields and try again.");
   }
 
+  const hint = (n?: number) => (n ? <span className="font-normal text-slate-500"> Closer&apos;s guess: {n}.</span> : null);
+
   return (
-    <SellerGate>
-      <form ref={form} onSubmit={submit} className="mx-auto max-w-lg space-y-3">
-        <h1 className="text-2xl font-bold">Create listing</h1>
-        {imported && (
-          <p className="rounded bg-blue-50 p-3 text-sm">
-            Filled in from {imported}. Check the details, then set your lowest price and auto-accept price below.
-          </p>
-        )}
+    <form ref={form} onSubmit={submit} className="mx-auto max-w-lg space-y-5">
+      <h1 className="text-2xl font-bold">Sell something</h1>
+      {imported && (
+        <p className="rounded bg-blue-50 p-3 text-sm">Filled in from {imported}. Check the details, then answer the questions in step 3.</p>
+      )}
 
-        <div className="rounded border border-dashed bg-slate-50 p-3">
-          <label className="block text-sm font-medium">Start from a photo</label>
-          <p className="mb-2 text-xs text-slate-500">Closer reads the picture and fills this form in. Check every field, especially the prices.</p>
-          <div className="flex items-center gap-3">
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              disabled={drafting}
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) draftFromPhoto(file);
-              }}
-              className="text-xs"
-            />
-            {drafting && <span className="text-xs text-slate-500">Reading the photo…</span>}
-          </div>
-          {preview && /* eslint-disable-next-line @next/next/no-img-element */ <img src={preview} alt="" className="mt-2 h-24 w-24 rounded object-cover" />}
-          {draftNote && <p className="mt-2 text-xs text-slate-600"><b>Why these prices:</b> {draftNote}</p>}
-        </div>
+      <section className="rounded border border-dashed bg-slate-50 p-3">
+        <h2 className={label}>1. Add a photo</h2>
+        <p className="mb-2 text-xs text-slate-500">Closer looks at it and fills in what it can. You can also skip this and type everything.</p>
+        <input
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          disabled={drafting}
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) draftFromPhoto(file);
+          }}
+          className="text-xs"
+        />
+        {drafting && <p className="mt-2 text-xs text-slate-500">Looking at your photo…</p>}
+        {preview && /* eslint-disable-next-line @next/next/no-img-element */ <img src={preview} alt="" className="mt-2 h-24 w-24 rounded object-cover" />}
+        {draft && <p className="mt-2 text-xs text-slate-600"><b>How Closer priced it:</b> {draft.rationale}</p>}
+      </section>
 
-        <input name="title" required placeholder="Title" className={field} />
-        <textarea name="description" placeholder="Description" className={field} rows={3} />
-        <div className="grid grid-cols-2 gap-3">
-          <input name="condition" placeholder="Condition" defaultValue="Good" className={field} />
-          <input name="imageUrl" type="url" placeholder="Image URL (optional)" className={field} />
-        </div>
-        <input name="notes" placeholder="Pickup / shipping notes" className={field} />
-        <div className="grid grid-cols-3 gap-3">
-          <label className="text-xs">Asking price<input name="ask" type="number" min="1" step="1" required className={field} /></label>
-          <label className="text-xs">Minimum (private)<input name="floor" type="number" min="1" step="1" required className={field} /></label>
-          <label className="text-xs">Auto-accept (private)<input name="autoAccept" type="number" min="1" step="1" required className={field} /></label>
-        </div>
-        <p className="text-xs text-slate-500">
-          <b>Asking</b> is what buyers see. <b>Minimum</b> is the lowest the agent may ever go, and it is never shown or hinted at. An offer at or above <b>auto-accept</b> is taken at once; anything between the two is sent to you to approve.
-        </p>
-        <p className="text-xs text-slate-500">Need minimum ≤ auto-accept ≤ asking. The AI never sees the two private prices while negotiating.</p>
-        <button className="rounded bg-slate-900 px-4 py-2 text-white">Create &amp; get link</button>
-        {err && <p className="text-sm text-red-600">{err}</p>}
-        {link && <p className="rounded bg-green-50 p-3 text-sm">Share this link: <a className="font-medium text-blue-700 underline" href={link}>{link}</a></p>}
-      </form>
-    </SellerGate>
+      <section className="space-y-3">
+        <h2 className={label}>2. Check the details</h2>
+        <input name="title" required placeholder="What is it? e.g. Canon AE-1 film camera" className={field} />
+        <textarea name="description" placeholder="Description buyers will see" className={field} rows={3} />
+        <label className="block text-xs">Asking price (what buyers see)<input name="ask" type="number" min="1" step="1" required className={field} /></label>
+        <input name="imageUrl" type="url" placeholder="Photo link (optional)" className={field} />
+      </section>
+
+      <section className={`space-y-4 rounded border p-3 ${draft || imported ? "border-blue-300 bg-blue-50/40" : ""}`}>
+        <h2 className={label}>3. A few quick questions</h2>
+        <p className="text-xs text-slate-500">A photo can&apos;t tell us these. Your answers to the price questions are private: buyers never see them.</p>
+
+        <label className={label}>
+          What condition is it in?
+          <input name="condition" placeholder="e.g. Good, light scratches" defaultValue="Good" className={`${field} mt-1 font-normal`} />
+        </label>
+
+        <label className={label}>
+          Anything a buyer should know that the photo doesn&apos;t show? <span className="font-normal text-slate-500">(optional)</span>
+          <textarea name="extra" rows={2} placeholder="e.g. battery holds a charge for a day, one small dent on the back, charger included" className={`${field} mt-1 font-normal`} />
+        </label>
+
+        <label className={label}>
+          What&apos;s the lowest price you&apos;d accept?{hint(draft?.floorDollars)}
+          <input name="floor" type="number" min="1" step="1" required className={`${field} mt-1 font-normal`} />
+          <small className="font-normal text-slate-500">Closer never goes below this, and never hints at it.</small>
+        </label>
+
+        <label className={label}>
+          At what price would you say yes straight away?{hint(draft?.autoAcceptDollars)}
+          <input name="autoAccept" type="number" min="1" step="1" required className={`${field} mt-1 font-normal`} />
+          <small className="font-normal text-slate-500">Offers at or above this are accepted at once. Offers between this and your lowest price come to you to approve.</small>
+        </label>
+
+        <fieldset className="text-sm">
+          <legend className="font-medium">Pickup or shipping?</legend>
+          {Object.entries(DELIVERY).map(([v, text]) => (
+            <label key={v} className="mr-4 inline-flex items-center gap-1">
+              <input type="radio" name="delivery" value={v} defaultChecked={v === "pickup"} /> {text}
+            </label>
+          ))}
+          <input name="area" placeholder="Area for pickup, or shipping details (not your home address)" className={`${field} mt-2`} />
+        </fieldset>
+      </section>
+
+      <button className="rounded bg-slate-900 px-4 py-2 text-white">Save and get my link</button>
+      {err && <p className="text-sm text-red-600">{err}</p>}
+      {link && <p className="rounded bg-green-50 p-3 text-sm">Saved. Share this link with buyers: <a className="font-medium text-blue-700 underline" href={link}>{link}</a></p>}
+    </form>
   );
 }
