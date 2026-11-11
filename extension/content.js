@@ -34,18 +34,26 @@ if (typeof document !== "undefined") {
 
     const landed = (el, text) => composerText(el).includes(text.slice(0, 20));
 
+    const settle = () => new Promise((r) => setTimeout(r, 150));
+
     // Never throws: any failure returns false so the caller shows the reply in the badge instead of losing it.
-    function insertDraft(el, text) {
+    async function insertDraft(el, text) {
       try {
         el.focus();
         if (el.isContentEditable) {
           document.execCommand("selectAll");
-          if (document.execCommand("insertText", false, text) && landed(el, text)) return true;
+          // Facebook's editor (Lexical) updates its DOM after insertText returns. Checking at once read as a
+          // failure and the paste fallback inserted the reply a second time (seen live 11 Nov). Wait, then check.
+          document.execCommand("insertText", false, text);
+          await settle();
+          if (landed(el, text)) return true;
           // Fallback for editors that ignore execCommand: a paste-style event carrying the text.
           const dt = new DataTransfer();
           dt.setData("text/plain", text);
           el.dispatchEvent(new InputEvent("beforeinput", { bubbles: true, cancelable: true, inputType: "insertFromPaste", data: text, dataTransfer: dt }));
+          await settle();
           if (!landed(el, text)) el.dispatchEvent(new ClipboardEvent("paste", { bubbles: true, cancelable: true, clipboardData: dt }));
+          await settle();
         } else {
           // Native setter so React-controlled inputs see the change.
           Object.getOwnPropertyDescriptor(Object.getPrototypeOf(el), "value").set.call(el, text);
@@ -85,7 +93,7 @@ if (typeof document !== "undefined") {
         const box = P.composer();
         if (!box) return badge(`Closer could not find the message box. Reply was:\n${res.reply}`);
         if (composerText(box).trim()) return badge(`Closer: you are typing, so nothing was inserted. Suggested reply:\n${res.reply}`);
-        if (!insertDraft(box, res.reply)) return badge(`Closer could not insert text. Suggested reply:\n${res.reply}`);
+        if (!(await insertDraft(box, res.reply))) return badge(`Closer could not insert text. Suggested reply:\n${res.reply}`);
 
         if (autoSend === true) {
           const btn = P.send();
