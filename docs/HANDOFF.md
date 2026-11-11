@@ -13,26 +13,27 @@ for the original product shape.
 Live at **https://closer-9a91.onrender.com** (Render, auto-deploys from `main`, takes about 3 minutes).
 Everything is committed and pushed; the working tree is clean apart from an untracked `.claude/`.
 
-**In progress: the extension on real sites.**
+**Done 11 Nov (extension + clarity pass):**
 
-- The extension is loaded unpacked in the owner's real Chrome. On the deployed
-  `/demo/marketplace` it injected, read the buyer message and answered
-  "Not paired. Paste a pairing token in the Closer popup." So manifest, content script and
-  service worker all work. **It has not yet drafted a reply**, because it is not paired.
-- Next: the owner pairs it (dashboard → "Pair a browser extension" → token into the popup, listing
-  slug `film-camera`). Then post a buyer message on `/demo/marketplace` and confirm a draft lands
-  in the message box.
-- Then real sites. The owner opens one test chat thread on Facebook (`facebook.com/messages/t/...`)
-  and one on Kijiji (My Messages). Inspect the real DOM through Claude in Chrome, read-only, and fix
-  `extension/selectors.js`. Both selector sets are guesses. Do not send messages or change anything
-  on those accounts. After editing, the owner must press reload on the extension in
-  `chrome://extensions`.
-- Known bug to fix in the Kijiji set: `id()` falls back to `data-testid`, which is the same for every
-  message, so the extension would answer once and then go silent. Return `null` unless a real
-  per-message id exists.
-- If a marketplace chat lives on a host or path the manifest does not match (for example
-  `messenger.com`, or a Kijiji path other than `/m-msg-my-messages/`), add it to both
-  `host_permissions` and `content_scripts.matches` in `extension/manifest.json`.
+- Landing page opens with two doors, "I'm selling" and "I'm buying" (3 steps, one main button each). The
+  buyer door points at the existing chat and `/agent-buyer`. Dashboard starts with a 3-step guide.
+- Extension pairs in one click: dashboard "Connect this browser" → `extension/pair.js` (content script on
+  `/dashboard*` only, same-origin `postMessage`). Popup lists the seller's items from the new
+  `POST /api/extension/listings` (token in body) instead of asking for a slug. Token and URL sit under Advanced.
+- **Verified in the owner's real Chrome:** one-click connect, then a draft reply in the message box on the
+  deployed `/demo/marketplace` with badge "draft ready".
+- Facebook selectors rewritten from a live Messenger Marketplace thread (`[role=log] [data-message-id]
+  [aria-roledescription=message]`, `At <time>, You:` label). Own messages read as outbound correctly.
+  **Not verified:** a draft against a real buyer. The owner's test thread ("Samuel · Test Item") has the
+  owner's account as the buyer. Needs the seller account in Chrome with the buyer having written last.
+- Kijiji: `id()` no longer uses `data-testid`. Real DOM never inspected; selectors still guesses.
+- The last demo test agreed CA$160 on `film-camera`, so it is reserved. Relist with
+  `curl -X POST https://closer-9a91.onrender.com/api/demo/reset` (the session was not allowed to run it).
+- Three leftover "Laptop" test listings show in the dashboard and popup. Not deleted (needs the owner's OK).
+
+**Next:** seller-side Facebook test, then Kijiji (open a conversation on an ad you posted, buyer wrote last,
+read DOM only, fix `CLOSER_KIJIJI`). After any extension edit the owner presses reload in `chrome://extensions`
+and reloads the page.
 
 **Still needs the owner (nobody else can do these):**
 

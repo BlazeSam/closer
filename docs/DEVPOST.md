@@ -7,8 +7,8 @@ pasted into the Devpost form. Things in `[square brackets]` need a decision or a
 
 - [ ] Hosted URL, YouTube link, seller password and sandbox buyer login filled in (here and in README)
 - [x] Invoice button and paste mode are built (dashboard). Test both on the hosted app before filming.
-- [ ] Extension sentences: delete the ones marked `[extension]` unless it has been loaded in real
-      Chrome and works on `/demo/marketplace`.
+- [x] Extension sentences (`[extension]`): it is loaded in real Chrome and drafts on `/demo/marketplace`
+      (verified 11 Nov), so they can stay. Do not claim Facebook or Kijiji work: not yet seen drafting there.
 - [ ] Real seller quotes for "Inspiration", if Person C has them. Do not invent any.
 - [ ] Prize picks. A project can win one Grand **or** one Honorable Mention prize, plus one Sponsor
       prize. Suggested opt-ins: Best Use of Agentic Commerce, Best Use of PayPal + AI, AG Grid, Render.
@@ -57,8 +57,10 @@ Closer then negotiates on the seller's behalf.
   it. When the deal is agreed, Closer hands over a PayPal payment link or sends the invoice.
 - **The seller stays in control.** A dashboard shows every negotiation, the offers waiting for
   approval, the full transcript and an audit log of each decision.
-- [extension] **It goes where the seller already sells.** A Chrome extension reads the newest buyer
-  message in a chat thread and drafts Closer's reply in the message box. The seller presses send.
+- [extension] **It goes where the seller already sells.** A Chrome extension, connected with one click
+  from the dashboard, reads the newest buyer message in a chat thread and drafts Closer's reply in the
+  message box. The seller presses send. Shown on a practice marketplace page; real marketplace pages
+  are still being tested.
 
 Every buyer chat has an "Under the hood" panel that shows what the system did behind each reply, so
 you can watch a jailbreak attempt fail.
@@ -155,7 +157,8 @@ decisions were in plain, tested code, we could let the model be as conversationa
 ## What's next for Closer
 
 - Real seller accounts instead of one shared password.
-- [extension] Reliable support for real marketplace chat pages.
+- [extension] Verified support for real marketplace chat pages (Facebook selectors are rewritten from the
+  live page; drafting there and all of Kijiji are still untested).
 - An MCP server so any buyer's assistant can negotiate with a Closer listing.
 - PayPal Pay Later messaging on agreed deals.
 

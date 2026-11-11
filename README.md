@@ -124,8 +124,8 @@ Most second-hand buyers are in a marketplace chat, not on this site. Two ways to
 
 `extension/` is a Chrome extension that does the pasting for you: it reads the newest buyer message
 in a chat thread, asks Closer for a reply and puts it in the message box as a draft. The seller
-presses send. See
-[extension/README.md](extension/README.md) for loading and pairing it. It is an independent tool and
+presses send. Pairing is one click: "Connect this browser" on the dashboard. See
+[extension/README.md](extension/README.md) for loading it. It is an independent tool and
 is not affiliated with or endorsed by any marketplace.
 
 ## Run it locally
@@ -208,9 +208,11 @@ API key. It passed 15 of 15 on three consecutive runs; the transcripts are in
 - Rate limiting is in memory, so it is per instance.
 - An offer that needs the seller's approval still reads slightly differently from an ordinary
   counter. Random latency and jitter reduce probing for the minimum but do not eliminate it.
-- The extension has been exercised against the mock marketplace page only. Its selectors for real
-  marketplace sites (Facebook Marketplace chats, Kijiji) are unverified. Paste mode in the dashboard
-  works with any site today.
+- The extension drafts replies on the deployed mock marketplace page in real Chrome (verified 11 Nov).
+  On a real Facebook Marketplace thread its selectors were rewritten from the live DOM and read your own
+  messages correctly, but drafting a reply to a real buyer has not been seen yet (the test account was
+  the buyer, not the seller). Kijiji selectors are still unverified. Paste mode in the dashboard works
+  with any site today.
 - Closer is not escrow. PayPal's own buyer and seller protection terms apply to each payment.
 
 ## License
