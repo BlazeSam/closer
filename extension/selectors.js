@@ -74,7 +74,9 @@ const CLOSER_KIJIJI = {
     return closerRectIsInbound(main, el.getBoundingClientRect());
   },
   text: (el) => (el.textContent || "").trim(),
-  id: (el) => el.getAttribute("data-message-id") || el.getAttribute("data-testid") || null,
+  // Only a real per-message id. data-testid is the same on every message, so using it as the key would mark
+  // the thread handled after the first reply and the extension would go silent. null falls back to count+text.
+  id: (el) => el.getAttribute("data-message-id") || null,
   composer: () =>
     document.querySelector('[role="main"] textarea, main textarea, [role="main"] [contenteditable="true"], main [contenteditable="true"], textarea[aria-label*="message" i], textarea[placeholder*="message" i]'),
   send: () =>
