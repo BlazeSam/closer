@@ -37,18 +37,22 @@ const CLOSER_FACEBOOK = {
   matches: () => location.hostname === "www.facebook.com" && location.pathname.startsWith("/messages/"),
   // /messages/t/<id>/ or /messages/e2ee/t/<id>/
   threadId: () => /\/messages\/(?:e2ee\/)?t\/([^/?#]+)/.exec(location.pathname)?.[1] || null,
-  messages: () => [...document.querySelectorAll('[role="main"] [role="row"] div[dir="auto"]')],
-  // Facebook marks no direction in the DOM we can rely on. Heuristic: your own messages sit on the right.
+  // Seen on 11 Nov 2026: each message is a div with data-message-id="mid.…", aria-roledescription="message"
+  // and aria-label "At 10:43 AM, You: <text>" inside [role="log"]. System lines ("You started this chat")
+  // have the same wrapper but no text bubble, so keep only nodes with a div[dir="auto"] bubble.
+  messages: () =>
+    [...document.querySelectorAll('[role="log"] [data-message-id][aria-roledescription="message"]')].filter((el) =>
+      el.querySelector('div[dir="auto"]'),
+    ),
+  // Both must agree, else not inbound: the label/heading does not say "You" (English UI only), AND the
+  // bubble sits left of the log's centre. A zero rect (hidden, not laid out) fails closerRectIsInbound.
   isInbound: (el) => {
-    const main = document.querySelector('[role="main"]')?.getBoundingClientRect();
-    const r = el.getBoundingClientRect();
-    // A hidden, collapsed or not-yet-laid-out node reports a zero rect at 0,0, which lands left of
-    // centre and would read as the buyer. With auto-send on, the agent would then answer its own
-    // message. Unknown direction must mean "not inbound": the safe failure is never replying.
-    return closerRectIsInbound(main, r);
+    const mine = /^At [^,]*, You:/.test(el.getAttribute("aria-label") || "") || /^You sent/.test(el.querySelector("h4")?.textContent || "");
+    const log = document.querySelector('[role="log"]')?.getBoundingClientRect();
+    return !mine && closerRectIsInbound(log, el.querySelector('div[dir="auto"]').getBoundingClientRect());
   },
-  text: (el) => (el.textContent || "").trim(),
-  id: () => null,
+  text: (el) => [...el.querySelectorAll('div[dir="auto"]')].map((d) => d.textContent).join("\n").trim(),
+  id: (el) => el.getAttribute("data-message-id") || null,
   composer: () => document.querySelector('[role="main"] div[contenteditable="true"][role="textbox"]'),
   send: () => document.querySelector('[role="main"] [aria-label="Press enter to send"], [role="main"] [aria-label="Send"]'),
 };
