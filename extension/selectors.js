@@ -105,25 +105,34 @@ function closerParsePrice(s) {
 const closerMeta = (prop) => document.querySelector(`meta[property="${prop}"], meta[name="${prop}"]`)?.getAttribute("content")?.trim() || null;
 const closerVisible = (el) => Boolean(el && el.getClientRects().length);
 
-// Facebook Marketplace item page, /marketplace/item/<id>/. UNVERIFIED until checked on a live listing.
-// Open Graph tags first (server-rendered, stable), visible DOM as fallback.
+// Facebook Marketplace item page. Seen 11 Nov 2026 on the owner's own listing, opened from a share link as
+// /commerce/listing/<id>/ (also /marketplace/item/<id>/). No [role="main"] and no og: tags on that page.
+// Title is the visible h1; price a leaf span "CA$150"; photo img[alt^="Product photo of"]. Under "Details" sits a
+// row "Condition" / "New", then the description as a span[dir=auto], then the location line.
 const CLOSER_FB_LISTING = {
   source: "facebook",
-  matches: () => location.hostname === "www.facebook.com" && /^\/marketplace\/item\/\d+/.test(location.pathname),
+  matches: () => location.hostname === "www.facebook.com" && /^\/(marketplace\/item|commerce\/listing)\/\d+/.test(location.pathname),
   read: () => {
-    const main = document.querySelector('[role="main"]') || document.body;
-    const title = [...main.querySelectorAll("h1")].find(closerVisible)?.textContent?.trim() || closerMeta("og:title");
-    // The price is a leaf span near the title whose whole text is a price ("CA$150").
-    const priceEl = [...main.querySelectorAll("span")].find((el) => !el.children.length && closerVisible(el) && /^\s*(CA|C)?[$€£]\s?\d/.test(el.textContent || ""));
-    // "Condition" label, value in the next text node along.
-    const label = [...main.querySelectorAll("span")].find((el) => (el.textContent || "").trim() === "Condition");
-    const condRow = label?.closest("div")?.parentElement;
-    const condition = condRow ? [...condRow.querySelectorAll("span")].map((el) => el.textContent.trim()).find((t) => t && t !== "Condition") || null : null;
-    const img = [...main.querySelectorAll('img[alt^="Product photo of"]')].find(closerVisible)?.src || closerMeta("og:image");
+    const root = document.querySelector('[role="main"]') || document.body;
+    const title = [...root.querySelectorAll("h1")].find(closerVisible)?.textContent?.trim() || closerMeta("og:title");
+    const priceEl = [...root.querySelectorAll("span")].find((el) => !el.children.length && closerVisible(el) && /^\s*(CA|C)?[$€£]\s?\d/.test(el.textContent || ""));
+    // The condition row is the first ancestor of the "Condition" label that also holds the value. The description
+    // is the nearest visible span[dir=auto] outside that row, within a few levels up (not the location line).
+    const label = [...root.querySelectorAll("span")].find((el) => closerVisible(el) && (el.textContent || "").trim() === "Condition");
+    let row = label;
+    while (row && row.innerText.trim() === "Condition") row = row.parentElement;
+    const condition = row ? row.innerText.split("\n").map((t) => t.trim()).find((t) => t && t !== "Condition") || null : null;
+    const isDesc = (el) => closerVisible(el) && !row.contains(el) && (el.textContent || "").trim() && !/Location is approximate/i.test(el.textContent);
+    let descEl = null;
+    for (let up = row?.parentElement, i = 0; up && !descEl && i < 6; up = up.parentElement, i++) descEl = [...up.querySelectorAll('span[dir="auto"]')].find(isDesc) || null;
+    // Opened from a share link the photo has alt "Product photo of <title>"; opened directly it had no alt at all,
+    // so fall back to the largest fbcdn image (avatars are 100px).
+    const big = [...root.querySelectorAll('img[src*="fbcdn.net"]')].filter((i) => i.naturalWidth >= 300).sort((a, b) => b.naturalWidth - a.naturalWidth)[0];
+    const img = root.querySelector('img[alt^="Product photo of"]')?.src || big?.src || closerMeta("og:image");
     return {
       title: title ? title.slice(0, 120) : null,
       price: closerParsePrice(priceEl?.textContent) ?? closerParsePrice(closerMeta("og:title")),
-      description: closerMeta("og:description"),
+      description: descEl?.textContent?.trim() || closerMeta("og:description"),
       condition: condition ? condition.slice(0, 60) : null,
       imageUrl: img && img.startsWith("https://") ? img : null,
     };

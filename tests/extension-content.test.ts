@@ -80,7 +80,7 @@ describe("listing page reader", () => {
   it("injects the reader only on marketplace pages, never with the reply drafter", () => {
     const m = JSON.parse(read("extension/manifest.json"));
     const entry = m.content_scripts.find((c: { js: string[] }) => c.js.includes("listing.js"));
-    expect(entry.matches).toEqual(["https://www.facebook.com/marketplace/*"]);
+    expect(entry.matches).toEqual(["https://www.facebook.com/marketplace/*", "https://www.facebook.com/commerce/listing/*"]);
     expect(entry.js).not.toContain("content.js");
     expect(m.host_permissions).toContain("https://www.facebook.com/marketplace/*");
   });
