@@ -69,7 +69,7 @@ if (typeof document !== "undefined") {
       if (handled[threadId] === key) return;
       if (failed.key === key && Date.now() - failed.at < 15000) return;
       const slug = listingSlug || P.listingHint?.();
-      if (!slug) return badge("Closer: pick a listing in the extension popup.");
+      if (!slug) return badge("Closer: click the Closer icon in your toolbar and choose which item you are selling.");
 
       busy = true;
       try {
