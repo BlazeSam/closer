@@ -103,7 +103,8 @@ if (typeof document !== "undefined") {
           }
           return badge("Closer: drafted, but could not find the send button. Press send yourself.");
         }
-        badge(res.pendingApproval ? "Closer: draft ready. Seller approval is pending on the dashboard." : "Closer: draft ready. Review it and press send.");
+        // Name the item: on Facebook the popup's item applied to an unrelated thread and nobody could tell (11 Nov).
+        badge(`Closer (selling: ${slug}): draft ready. ${res.pendingApproval ? "Seller approval is pending on the dashboard." : "Review it and press send."}`);
       } finally {
         busy = false;
       }
