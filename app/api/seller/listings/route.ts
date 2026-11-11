@@ -35,3 +35,8 @@ export async function POST(req: Request) {
   });
   return Response.json({ slug: l.slug, url: `${env().APP_URL}/l/${l.slug}` });
 }
+
+export async function GET(req: Request) {
+  if (!isSeller(req)) return unauthorized();
+  return Response.json(await prisma.listing.findMany({ orderBy: { createdAt: "desc" }, take: 100, select: { slug: true, title: true } }));
+}

@@ -8,7 +8,7 @@ ModuleRegistry.registerModules([AllCommunityModule]);
 
 type Row = { id: string; listing: string; buyer: string; status: string; lastOffer: number | null; counter: number | null; agreed: number | null; paypal: string; updatedAt: string };
 type Approval = { id: string; kind: "PRICE" | "CUSTOM"; details: { offerCents?: number; question?: string }; buyer: string; listing: string; currency: string };
-type Detail = { messages: { role: string; content: string }[]; audit: { type: string; payload: unknown; createdAt: string }[] };
+type Detail = { id: string; status: string; paypalInvoiceId: string | null; buyerEmail: string | null; messages: { role: string; content: string }[]; audit: { type: string; payload: unknown; createdAt: string }[] };
 
 const money = (p: { value: number | null }) => (p.value == null ? "" : `$${(p.value / 100).toFixed(2).replace(/\.00$/, "")}`);
 const PILL: Record<string, string> = { OPEN: "#e0f2fe", AWAITING_APPROVAL: "#fef3c7", AGREED: "#dcfce7", PAID: "#86efac", DECLINED: "#fee2e2", EXPIRED: "#e5e7eb", TAKEN_OVER: "#ede9fe" };
@@ -69,11 +69,116 @@ function PairExtension() {
   );
 }
 
+// Seller types the buyer's email; the server reads the amount from the agreed price. Nothing here goes to the buyer chat.
+function InvoiceForm({ d, onSent }: { d: Detail; onSent: () => void }) {
+  const [email, setEmail] = useState("");
+  const [msg, setMsg] = useState<{ ok: boolean; text: string }>();
+  const [busy, setBusy] = useState(false);
+  if (d.paypalInvoiceId) return <p className="mt-3 rounded border bg-white p-3 text-sm">Invoice sent{d.buyerEmail ? ` to ${d.buyerEmail}` : ""}.</p>;
+  if (d.status !== "AGREED") return null;
+  async function send() {
+    setBusy(true);
+    setMsg(undefined);
+    const r = await fetch(`/api/negotiations/${d.id}/paypal/invoice`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) });
+    const j = await r.json().catch(() => ({}));
+    setBusy(false);
+    if (r.ok) {
+      setMsg({ ok: true, text: j.alreadySent ? "Invoice already sent." : `Invoice sent to ${j.sentTo}. The buyer pays on paypal.com.` });
+      onSent();
+    } else setMsg({ ok: false, text: j.error ?? "Could not send the invoice." });
+  }
+  return (
+    <div className="mt-3 rounded border bg-white p-3 text-sm">
+      <h3 className="mb-1 font-semibold">Send PayPal invoice</h3>
+      <div className="flex gap-2">
+        <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Buyer email" className="flex-1 rounded border px-2 py-1" />
+        <button onClick={send} disabled={busy || !email} className="rounded bg-slate-900 px-3 py-1 text-white disabled:opacity-50">Send PayPal invoice</button>
+      </div>
+      {msg && <p className={`mt-2 ${msg.ok ? "text-green-700" : "text-red-600"}`}>{msg.text}</p>}
+    </div>
+  );
+}
+
+// Paste mode: the seller pastes what a buyer wrote on another site and copies Closer's reply back by hand.
+function PasteReply() {
+  const [listings, setListings] = useState<{ slug: string; title: string }[]>([]);
+  const [slug, setSlug] = useState("");
+  const [thread, setThread] = useState("");
+  const [msg, setMsg] = useState("");
+  const [out, setOut] = useState("");
+  const [pay, setPay] = useState("");
+  const [err, setErr] = useState("");
+  const [copied, setCopied] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/seller/listings").then((r) => (r.ok ? r.json() : [])).then((l) => { setListings(l); setSlug((s) => s || l[0]?.slug || ""); });
+  }, []);
+
+  async function draft() {
+    setErr("");
+    setOut("");
+    setCopied(false);
+    setBusy(true);
+    const r = await fetch("/api/seller/reply", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ listingSlug: slug, threadId: thread.trim(), buyerMessage: msg }) });
+    const j = await r.json().catch(() => ({}));
+    setBusy(false);
+    if (r.ok) {
+      setOut(j.reply);
+      setPay(j.checkoutUrl ?? "");
+    } else setErr(j.error ?? "Could not draft a reply.");
+  }
+
+  return (
+    <section className="rounded border bg-white p-3 text-sm">
+      <h2 className="mb-1 font-semibold">Reply to a buyer on another site</h2>
+      <p className="mb-2 text-slate-600">Paste what the buyer wrote. Closer drafts the reply; you send it yourself.</p>
+      <div className="space-y-2">
+        <select value={slug} onChange={(e) => setSlug(e.target.value)} className="w-full rounded border px-2 py-1">
+          {listings.map((l) => <option key={l.slug} value={l.slug}>{l.title}</option>)}
+        </select>
+        <input value={thread} onChange={(e) => setThread(e.target.value)} placeholder="Buyer name or thread" className="w-full rounded border px-2 py-1" />
+        <textarea value={msg} onChange={(e) => setMsg(e.target.value)} rows={3} placeholder="Buyer's message" className="w-full rounded border px-2 py-1" />
+        <button onClick={draft} disabled={busy || !slug || !thread.trim() || !msg.trim()} className="rounded bg-slate-900 px-3 py-1 text-white disabled:opacity-50">{busy ? "Drafting..." : "Draft reply"}</button>
+      </div>
+      {err && <p className="mt-2 text-red-600">{err}</p>}
+      {out && (
+        <div className="mt-3 flex gap-2">
+          <textarea readOnly value={out} rows={3} className="flex-1 rounded border bg-slate-50 px-2 py-1" />
+          <button
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(out);
+                setCopied(true);
+              } catch {
+                setErr("Copy failed. Select the reply and copy it by hand.");
+              }
+            }}
+            className="self-start rounded border px-3 py-1"
+          >
+            {copied ? "Copied" : "Copy"}
+          </button>
+        </div>
+      )}
+      {pay && (
+        <p className="mt-2 rounded bg-green-50 px-2 py-1 text-green-900">
+          Deal agreed. Send the buyer this PayPal payment link: <span className="font-mono text-xs break-all">{pay}</span>. Or click the deal in the table below to send a PayPal invoice.
+        </p>
+      )}
+    </section>
+  );
+}
+
 function Dashboard() {
   const [rows, setRows] = useState<Row[]>([]);
   const [approvals, setApprovals] = useState<Approval[]>([]);
   const [detail, setDetail] = useState<Detail>();
   const [reply, setReply] = useState<Record<string, string>>({});
+
+  const open = useCallback(async (id: string) => {
+    const r = await fetch(`/api/seller/negotiations/${id}`);
+    if (r.ok) setDetail(await r.json());
+  }, []);
 
   const refresh = useCallback(async () => {
     const r = await fetch("/api/seller/dashboard");
@@ -97,6 +202,7 @@ function Dashboard() {
   return (
     <div className="space-y-6">
       <PairExtension />
+      <PasteReply />
 
       <section>
         <h2 className="mb-2 font-semibold">Approvals {approvals.length > 0 && <span className="rounded-full bg-amber-200 px-2 text-xs">{approvals.length}</span>}</h2>
@@ -126,13 +232,12 @@ function Dashboard() {
             columnDefs={cols}
             defaultColDef={{ sortable: true, resizable: true }}
             getRowId={(p) => p.data.id}
-            onRowClicked={async (e) => {
-              const r = await fetch(`/api/seller/negotiations/${e.data!.id}`);
-              if (r.ok) setDetail(await r.json());
-            }}
+            onRowClicked={(e) => open(e.data!.id)}
           />
         </div>
       </section>
+
+      {detail && <InvoiceForm key={detail.id} d={detail} onSent={() => open(detail.id)} />}
 
       {detail && (
         <section className="grid gap-4 md:grid-cols-2">
