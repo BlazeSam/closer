@@ -1,4 +1,5 @@
 import { prisma } from "../../../../lib/db";
+import { DEMO_SLUGS } from "../../../../lib/publicListing";
 import { allow, clientIp } from "../../../../lib/ratelimit";
 
 // DEMO ONLY. The landing page runs a real negotiation, which really does reserve and sell the item,
@@ -7,7 +8,6 @@ import { allow, clientIp } from "../../../../lib/ratelimit";
 // Deliberately narrow: it touches ONLY the three seeded demo slugs and only ever puts them back on
 // sale. It cannot reach a listing a real seller created, cannot change a price, and cannot delete
 // anything. Open on purpose, since a judge has no login - hence the allowlist rather than auth.
-const DEMO_SLUGS = ["road-bike", "standing-desk", "film-camera"];
 
 export async function POST(req: Request) {
   if (!allow(`demo-reset:${clientIp(req)}`, 10, 60_000)) return Response.json({ error: "rate limited" }, { status: 429 });

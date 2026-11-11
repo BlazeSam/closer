@@ -2,12 +2,12 @@ import Link from "next/link";
 import AgentDuel from "../components/AgentDuel";
 import { prisma } from "../lib/db";
 import { fmt } from "../lib/replies";
-import { publicSelect } from "../lib/publicListing";
+import { DEMO_SLUGS, publicSelect } from "../lib/publicListing";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const listings = await prisma.listing.findMany({ select: publicSelect, orderBy: { createdAt: "asc" } }).catch(() => []);
+  const listings = await prisma.listing.findMany({ where: { slug: { in: DEMO_SLUGS } }, select: publicSelect, orderBy: { createdAt: "asc" } }).catch(() => []);
   // The duel needs something to sell. Prefer the desk (biggest gap, so the haggling is visible).
   const hero = listings.find((l) => l.slug === "standing-desk") ?? listings[0];
 
