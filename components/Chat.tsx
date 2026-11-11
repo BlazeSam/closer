@@ -37,7 +37,11 @@ export default function Chat({ slug, currency }: { slug: string; currency: strin
     return () => clearInterval(t);
   }, [id, snap.status, load]);
 
-  useEffect(() => bottom.current?.scrollIntoView({ behavior: "smooth" }), [snap.messages.length]);
+  // Braces matter: newer Chrome returns a Promise from scrollIntoView, and React calls whatever an
+  // effect returns as its cleanup.
+  useEffect(() => {
+    bottom.current?.scrollIntoView({ behavior: "smooth" });
+  }, [snap.messages.length]);
 
   async function send(e: React.FormEvent) {
     e.preventDefault();
