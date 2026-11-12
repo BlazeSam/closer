@@ -5,7 +5,8 @@ pasted into the Devpost form. Things in `[square brackets]` need a decision or a
 
 ## Before pasting
 
-- [ ] Hosted URL, YouTube link, seller password and sandbox buyer login filled in (here and in README)
+- [ ] Hosted URL and YouTube link filled in. Seller password and sandbox buyer login go ONLY in Devpost's
+  testing-instructions box (judges only), never in this public file or the README.
 - [x] Invoice button and paste mode are built (dashboard). Test both on the hosted app before filming.
 - [x] Extension sentences (`[extension]`): it is loaded in real Chrome and drafts on `/demo/marketplace`
       (verified 11 Nov), so they can stay. Do not claim Facebook or Kijiji work: not yet seen drafting there.

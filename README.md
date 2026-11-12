@@ -28,11 +28,8 @@ each run, so the demo never ends up sold out.
 
 ### Test credentials
 
-| What | Value |
-|---|---|
-| Seller dashboard password (`/dashboard`, `/sell/new`) | TODO(you): demo seller password |
-| PayPal sandbox buyer email | TODO(you): sandbox personal account email |
-| PayPal sandbox buyer password | TODO(you): sandbox personal account password |
+The seller dashboard password (`/dashboard`, `/sell/new`) and a PayPal sandbox buyer login are given to
+judges in the Devpost submission's testing instructions. They are kept out of this public repository.
 
 Everything runs on the PayPal sandbox. No real money moves.
 
