@@ -48,6 +48,9 @@ describe("placeholder substitution", () => {
       expect(out).not.toContain("{");
     }
     expect(substitute("{price}", { price: 18000 }, "CAD")).toBe("CA$180");
+    expect(substitute("My counter is CA${price}.", { price: 15700 }, "CAD")).toBe("My counter is CA$157.");
+    expect(substitute("Still ${price}, not $ {offer}.", { price: 15700, offer: 14000 }, "CAD")).toBe("Still CA$157, not CA$140.");
+    expect(substitute("Costs $5 to ship.", {}, "CAD")).toBe("Costs $5 to ship.");
   });
 });
 

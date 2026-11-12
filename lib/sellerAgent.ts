@@ -98,6 +98,10 @@ export async function handleTurn(negotiationId: string, message: string, offerCe
     reply = n0.status !== "AGREED" ? replyFor(outcome, listing.askCents, listing.currency)
       : n0.channel === "WEB" ? `${agreed} Please complete the PayPal checkout below.`
       : `${agreed} Pay securely with PayPal here: ${env().APP_URL}/pay/${n0.id}`;
+  } else if (listing.status === "SOLD") {
+    // Seen 12 Nov: a buyer kept chatting on a sold item and the model improvised "I couldn't get a decision".
+    outcome = { kind: "UNAVAILABLE" };
+    reply = replyFor(outcome, listing.askCents, listing.currency);
   } else if (offerCents !== undefined || !hasKey()) {
     // Structured offer (agent API) or no LLM: pure deterministic path.
     const amounts = extractAmounts(message);
@@ -211,6 +215,8 @@ async function llmTurn(negotiationId: string, message: string, listing: { askCen
     }
     reply = outcome ? replyFor(outcome, listing.askCents, listing.currency) : SAFE_TEMPLATE;
   }
+  // Reserved by another buyer: the model has no price to talk about and words it badly. Say it plainly.
+  if (outcome?.kind === "UNAVAILABLE") reply = replyFor(outcome, listing.askCents, listing.currency);
   await prisma.auditEvent.create({ data: { negotiationId, type: "REPLY_CHECKED", payload: { source: fromModel ? "model" : "policy" } } });
   if (sellerQuestion) {
     await createCustomApproval(negotiationId, substitute(sellerQuestion, { price: outcome && "priceCents" in outcome ? outcome.priceCents : undefined, ask: listing.askCents, offer: buyerOfferCents }, listing.currency));

@@ -26,8 +26,11 @@ export function template(o: Outcome): string {
 // The model is told to always write {price}, but outcomes like PENDING/INVALID/UNAVAILABLE carry no
 // price. Dropping the placeholder leaves "I can't accept  for this item", so fall back to words.
 // ponytail: fixed wording, not grammar-aware; good enough because the model writes the sentence round it.
+// The model sometimes writes its own symbol before a slot ("CA${price}"), which came out as "CA$CA$157" (seen
+// 12 Nov). fmt() already adds the symbol, so drop any symbol written right before a slot.
 export const substitute = (text: string, v: { price?: number; ask?: number; offer?: number }, currency = "USD") =>
   text
+    .replace(/(?:[A-Z]{0,3}[$€£]\s?)+(?=\{(?:price|ask|offer)\})/g, "")
     .replaceAll("{price}", v.price != null ? fmt(v.price, currency) : "that amount")
     .replaceAll("{ask}", v.ask != null ? fmt(v.ask, currency) : "the asking price")
     // The buyer's own number. Without this the model wrote both halves of "I can't accept {price},
