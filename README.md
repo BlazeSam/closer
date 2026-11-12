@@ -23,6 +23,17 @@ On the live demo, no setup and no login:
    did behind each reply.
 3. Reach a deal and pay with the PayPal sandbox buyer below.
 
+### The full seller flow (needs the seller password)
+
+1. **List it:** on `/sell/new`, upload a photo. Closer drafts the title, description and an asking
+   price, then asks what a photo can't tell it: condition details, your lowest price, the price you'd
+   accept straight away, and pickup or shipping. Save to get a buyer link.
+2. **Sell it:** open the link in a private window and haggle as the buyer. An offer at or above the
+   accept-at-once price closes the deal; anything lower gets a counter, or goes to you to approve.
+3. **Get paid:** pay with the PayPal sandbox buyer.
+4. **Track it:** `/dashboard` shows the deal PAID in the AG Grid, its transcript and audit log, and
+   sales analytics (sell-through, deal vs asking, time to a deal, by channel and by item).
+
 A finished deal really does sell the item. The home page duel relists the three demo items before
 each run, so the demo never ends up sold out.
 
@@ -86,7 +97,7 @@ OpenAI instead, or `AI_MODEL` to pick another model.
 |---|---|---|
 | Seller agent | `lib/sellerAgent.ts` | Talks to the buyer. Tools: `evaluate_offer`, `get_listing_info`, `ask_seller`. |
 | Buyer agent | `lib/buyerAgent.ts` | Negotiates for a buyer over the public agent API, with a budget enforced in code. |
-| Photo to listing | `lib/listingDraft.ts` | Vision reads a photo and drafts a title, description and conservative prices. |
+| Photo to listing | `lib/listingDraft.ts` | Vision reads a photo and drafts a title, description and asking price. The seller then answers a few questions a photo can't (condition, lowest price, accept-at-once price, pickup or shipping); the model's price guesses are only shown as hints. |
 
 Without an API key both agents fall back to deterministic templates, so negotiating, approving and
 paying still work.
@@ -190,9 +201,9 @@ dashboard. It expects an external Postgres such as Neon.
 npm test
 ```
 
-81 tests: the price policy (including a 1000-case property test that nothing is ever decided below
+The tests cover the price policy (including a 1000-case property test that nothing is ever decided below
 the minimum), the output guard, capture and invoice verification, floor probing, concurrency, the
-buyer-facing trace redaction and the extension.
+buyer-facing trace redaction, sales analytics and the extension.
 
 > Several tests create and delete rows in whatever database `DATABASE_URL` points at. Use a database
 > you do not mind them writing to.
@@ -210,7 +221,7 @@ API key. It passed 15 of 15 on three consecutive runs; the transcripts are in
 - The extension drafts replies on the deployed mock marketplace page in real Chrome (verified 11 Nov).
   On a real Facebook Marketplace thread its selectors were rewritten from the live DOM and read your own
   messages correctly, and from the seller account it drafted replies to a real buyer (11 Nov). That run
-  showed a doubled draft, since fixed and not yet re-run there. Kijiji selectors are still unverified. Paste mode in the dashboard works
+  showed a doubled draft, since fixed. Kijiji selectors are still unverified. Paste mode in the dashboard works
   with any site today.
 - "Add to Closer" was verified on a real Facebook listing (11 Nov): title, price, condition, description and photo
   arrived in `/sell/new` on the deployed app. Facebook photo links are signed and expire, so an imported photo may
