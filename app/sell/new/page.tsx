@@ -16,6 +16,8 @@ type Draft = {
   rationale: string;
 };
 
+type Post = { title: string; price: string; description: string; condition: string };
+
 const DELIVERY = { pickup: "Pickup only", shipping: "Can ship", both: "Pickup or shipping" } as const;
 
 export default function NewListing() {
@@ -29,8 +31,7 @@ export default function NewListing() {
 
 function ListingForm() {
   const [link, setLink] = useState("");
-  const [adText, setAdText] = useState("");
-  const [copied, setCopied] = useState(false);
+  const [post, setPost] = useState<Post | null>(null);
   const [err, setErr] = useState("");
   const [drafting, setDrafting] = useState(false);
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -126,7 +127,7 @@ function ListingForm() {
     if (r.ok) {
       setLink(j.url);
       // Public fields only: never the lowest or auto-accept price.
-      setAdText([str("title"), `$${num("ask")}`, str("description"), extra, `Condition: ${str("condition") || "Used"}`, [delivery, str("area")].filter(Boolean).join(". ")].filter(Boolean).join("\n\n"));
+      setPost({ title: str("title").slice(0, 100), price: String(num("ask")), description: [str("description"), extra, [delivery, str("area")].filter(Boolean).join(". ")].filter(Boolean).join("\n\n"), condition: str("condition") || "Used" });
     }
     else setErr(j.error ?? "Could not save. Check the fields and try again.");
   }
@@ -206,25 +207,53 @@ function ListingForm() {
       <button className="rounded bg-slate-900 px-4 py-2 text-white">Save and get my link</button>
       {err && <p className="text-sm text-red-600">{err}</p>}
       {link && <p className="rounded bg-green-50 p-3 text-sm">Saved. Share this link with buyers: <a className="font-medium text-blue-700 underline" href={link}>{link}</a></p>}
-      {adText && (
-        // Closer cannot post for you: Facebook has no public listing API. This copies the ad text and opens
-        // Facebook's own "create listing" page; you paste, add the photo and publish there yourself.
-        <div className="rounded border p-3 text-sm">
-          <p className="mb-2">Also selling on Facebook Marketplace? Copy the ad, then paste it into Facebook&apos;s form and add your photo.</p>
-          <button
-            type="button"
-            className="rounded bg-blue-700 px-3 py-2 text-white"
-            onClick={async () => {
-              await navigator.clipboard.writeText(adText).then(() => setCopied(true), () => setCopied(false));
-              window.open("https://www.facebook.com/marketplace/create/item", "_blank", "noopener");
-            }}
-          >
-            Copy ad and open Facebook Marketplace
-          </button>
-          {copied && <p className="mt-2 text-xs text-slate-600">Copied. Paste it into the title and description on Facebook.</p>}
-          <textarea readOnly value={adText} rows={6} className={`${field} mt-2 font-mono text-xs`} />
-        </div>
-      )}
+      {post && <PostOnFacebook post={post} />}
     </form>
+  );
+}
+
+// Closer cannot publish for you: Facebook has no public listing API. This opens Facebook's own create-listing
+// form with the public ad in the URL fragment (never sent to Facebook's servers). The Closer extension reads it
+// and fills the form in; without the extension the seller copies each field below. Either way the seller adds
+// the photo, picks a category and presses Publish themselves.
+function PostOnFacebook({ post }: { post: Post }) {
+  const [note, setNote] = useState("");
+  const url = `https://www.facebook.com/marketplace/create/item#closer=${encodeURIComponent(JSON.stringify(post))}`;
+
+  async function copy(name: string, value: string, el: HTMLElement | null) {
+    try {
+      await navigator.clipboard.writeText(value);
+      setNote(`${name} copied.`);
+    } catch {
+      // No clipboard permission: select the text so Ctrl+C works, and say so instead of failing silently.
+      (el?.previousElementSibling as HTMLInputElement | HTMLTextAreaElement | null)?.select();
+      setNote(`Could not copy the ${name.toLowerCase()} for you. It is selected: press Ctrl+C.`);
+    }
+  }
+
+  return (
+    <div className="space-y-2 rounded border p-3 text-sm">
+      <p className="font-medium">Also selling on Facebook Marketplace?</p>
+      <a href={url} target="_blank" rel="noopener" className="inline-block rounded bg-blue-700 px-3 py-2 text-white">
+        Post on Facebook Marketplace
+      </a>
+      <p className="text-xs text-slate-600">
+        With the Closer extension installed, Facebook&apos;s form fills itself in. You add the photo, pick a category and press Publish.
+      </p>
+      <details className="text-xs">
+        <summary className="cursor-pointer text-slate-600">No extension? Copy each field</summary>
+        <div className="mt-2 space-y-2">
+          {([["Title", post.title], ["Price", post.price], ["Description", post.description]] as const).map(([name, value]) => (
+            <div key={name} className="flex gap-2">
+              {name === "Description" ? <textarea readOnly value={value} rows={4} className={`${field} text-xs`} /> : <input readOnly value={value} className={`${field} text-xs`} />}
+              <button type="button" className="self-start whitespace-nowrap rounded border px-2 py-1" onClick={(e) => copy(name, value, e.currentTarget)}>
+                Copy {name.toLowerCase()}
+              </button>
+            </div>
+          ))}
+        </div>
+      </details>
+      {note && <p className="text-xs text-slate-600">{note}</p>}
+    </div>
   );
 }

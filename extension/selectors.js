@@ -142,3 +142,62 @@ const CLOSER_FB_LISTING = {
 function closerListingPage() {
   return [CLOSER_FB_LISTING].find((p) => p.matches()) || null;
 }
+
+// ---- Filling Facebook's "create listing" form, for "Post on Facebook Marketplace" (post.js). ----
+// Closer opens the form with the public ad in the URL fragment (#closer=<json>), which never reaches
+// Facebook's servers. post.js fills the form and stops: it never presses Next or Publish.
+
+// Pure. Anyone can craft a link, so treat the fragment as untrusted: plain strings only, capped lengths.
+function closerParsePost(hash) {
+  try {
+    if (!String(hash).startsWith("#closer=")) return null;
+    const j = JSON.parse(decodeURIComponent(String(hash).slice(8)));
+    const s = (v, max) => (typeof v === "string" ? v.trim().slice(0, max) : "");
+    const price = Math.round(Number(j.price));
+    const post = { title: s(j.title, 100), price: price > 0 && price < 1e7 ? String(price) : "", description: s(j.description, 5000), condition: s(j.condition, 60) };
+    return post.title ? post : null;
+  } catch {
+    return null;
+  }
+}
+
+// Pure. A seller's free-text condition -> one of Facebook's four options. Unknown used item -> "Used - Good".
+function closerFbCondition(text) {
+  const t = String(text || "").toLowerCase();
+  if (!t.trim()) return null;
+  if (/like new|excellent|mint|barely used/.test(t)) return "Used - Like New";
+  // Only when it leads: "new tires last month" on a used bike must not be listed as New.
+  if (/^\s*(brand[- ]?new|new)\b|sealed|unopened|never used/.test(t)) return "New";
+  if (/fair|worn|rough|poor|heavy wear|for parts/.test(t)) return "Used - Fair";
+  return "Used - Good";
+}
+
+// Seen 12 Nov 2026 at /marketplace/create/item: each field is a <label> whose first line is its name. Title
+// and Price hold an <input>, Description a <textarea>; Category and Condition are label[role=combobox] that
+// open a list of [role=option]. All React-controlled, so values go in through the native setter.
+const CLOSER_FB_CREATE = {
+  matches: () => location.hostname === "www.facebook.com" && location.pathname.startsWith("/marketplace/create"),
+  field: (name) => [...document.querySelectorAll("label")].find((l) => (l.innerText || "").trim().split("\n")[0] === name) || null,
+  ready: () => Boolean(CLOSER_FB_CREATE.field("Title")?.querySelector("input")),
+  // Sets one text field, only if it is empty: never overwrite what the seller (or a saved draft) put there.
+  set: (name, value) => {
+    const el = CLOSER_FB_CREATE.field(name)?.querySelector("input, textarea");
+    if (!el || !value || el.value) return false;
+    el.focus();
+    Object.getOwnPropertyDescriptor(Object.getPrototypeOf(el), "value").set.call(el, value);
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+    el.blur();
+    return Boolean(el.value);
+  },
+  pick: async (name, option) => {
+    const box = CLOSER_FB_CREATE.field(name);
+    // A chosen value shows as a second non-empty line. (Unchosen, the label still has blank lines.)
+    if (!box || !option || box.innerText.split("\n").map((t) => t.trim()).filter(Boolean).length > 1) return false;
+    box.click();
+    await new Promise((r) => setTimeout(r, 700));
+    const opt = [...document.querySelectorAll('[role="option"]')].find((o) => (o.innerText || "").trim() === option);
+    if (!opt) return false;
+    opt.click();
+    return true;
+  },
+};

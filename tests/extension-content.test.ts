@@ -85,3 +85,39 @@ describe("listing page reader", () => {
     expect(m.host_permissions).toContain("https://www.facebook.com/marketplace/*");
   });
 });
+
+describe("post on Facebook Marketplace", () => {
+  const { parse, cond } = new Function(`${read("extension/selectors.js")}; return { parse: closerParsePost, cond: closerFbCondition };`)() as {
+    parse: (h: unknown) => { title: string; price: string; description: string; condition: string } | null;
+    cond: (t: unknown) => string | null;
+  };
+  const hash = (o: unknown) => `#closer=${encodeURIComponent(JSON.stringify(o))}`;
+
+  it("reads the ad from the URL fragment and distrusts everything in it", () => {
+    expect(parse(hash({ title: " Lamp ", price: 80, description: "Brass", condition: "Good" }))).toEqual({ title: "Lamp", price: "80", description: "Brass", condition: "Good" });
+    expect(parse(hash({ title: "x".repeat(500), price: "abc", description: { evil: 1 } }))).toEqual({ title: "x".repeat(100), price: "", description: "", condition: "" });
+    expect(parse(hash({ price: 80 }))).toBeNull(); // no title, nothing to post
+    expect(parse("#closer=%7Bnot json")).toBeNull();
+    expect(parse("#something-else")).toBeNull();
+    expect(parse("")).toBeNull();
+  });
+
+  it("maps a seller's condition to Facebook's options without calling a used item new", () => {
+    expect(cond("Good, light scratches")).toBe("Used - Good");
+    expect(cond("Like new")).toBe("Used - Like New");
+    expect(cond("Brand new, sealed")).toBe("New");
+    expect(cond("Good. New tires last month")).toBe("Used - Good");
+    expect(cond("Fair, worn strap")).toBe("Used - Fair");
+    expect(cond("")).toBeNull();
+  });
+
+  it("the form filler never publishes and never carries the private prices", () => {
+    const post = read("extension/post.js");
+    expect(post).not.toMatch(/Publish"\)|"Next"|\.submit\(/);
+    const page = read("app/sell/new/page.tsx");
+    const setPost = page.slice(page.indexOf("setPost({"), page.indexOf("setPost({") + 400);
+    expect(setPost).not.toMatch(/floor|autoAccept/);
+    const m = JSON.parse(read("extension/manifest.json"));
+    expect(m.content_scripts.find((c: { js: string[] }) => c.js.includes("post.js")).js).toEqual(["selectors.js", "listing.js", "post.js"]);
+  });
+});

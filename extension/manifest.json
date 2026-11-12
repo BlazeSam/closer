@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Closer reply drafter",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "Drafts replies to buyer messages from your Closer listing. Independent tool, not affiliated with any marketplace.",
   "permissions": [
     "storage"
@@ -52,7 +52,8 @@
       ],
       "js": [
         "selectors.js",
-        "listing.js"
+        "listing.js",
+        "post.js"
       ],
       "run_at": "document_idle"
     }
