@@ -29,6 +29,8 @@ export default function NewListing() {
 
 function ListingForm() {
   const [link, setLink] = useState("");
+  const [adText, setAdText] = useState("");
+  const [copied, setCopied] = useState(false);
   const [err, setErr] = useState("");
   const [drafting, setDrafting] = useState(false);
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -121,7 +123,11 @@ function ListingForm() {
       }),
     });
     const j = await r.json();
-    if (r.ok) setLink(j.url);
+    if (r.ok) {
+      setLink(j.url);
+      // Public fields only: never the lowest or auto-accept price.
+      setAdText([str("title"), `$${num("ask")}`, str("description"), extra, `Condition: ${str("condition") || "Used"}`, [delivery, str("area")].filter(Boolean).join(". ")].filter(Boolean).join("\n\n"));
+    }
     else setErr(j.error ?? "Could not save. Check the fields and try again.");
   }
 
@@ -200,6 +206,25 @@ function ListingForm() {
       <button className="rounded bg-slate-900 px-4 py-2 text-white">Save and get my link</button>
       {err && <p className="text-sm text-red-600">{err}</p>}
       {link && <p className="rounded bg-green-50 p-3 text-sm">Saved. Share this link with buyers: <a className="font-medium text-blue-700 underline" href={link}>{link}</a></p>}
+      {adText && (
+        // Closer cannot post for you: Facebook has no public listing API. This copies the ad text and opens
+        // Facebook's own "create listing" page; you paste, add the photo and publish there yourself.
+        <div className="rounded border p-3 text-sm">
+          <p className="mb-2">Also selling on Facebook Marketplace? Copy the ad, then paste it into Facebook&apos;s form and add your photo.</p>
+          <button
+            type="button"
+            className="rounded bg-blue-700 px-3 py-2 text-white"
+            onClick={async () => {
+              await navigator.clipboard.writeText(adText).then(() => setCopied(true), () => setCopied(false));
+              window.open("https://www.facebook.com/marketplace/create/item", "_blank", "noopener");
+            }}
+          >
+            Copy ad and open Facebook Marketplace
+          </button>
+          {copied && <p className="mt-2 text-xs text-slate-600">Copied. Paste it into the title and description on Facebook.</p>}
+          <textarea readOnly value={adText} rows={6} className={`${field} mt-2 font-mono text-xs`} />
+        </div>
+      )}
     </form>
   );
 }
