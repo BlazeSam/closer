@@ -50,7 +50,9 @@ function ListingForm() {
       const v = q.get(key);
       if (v) set(name, v);
     }
-    if (q.get("imageUrl")) setPreview(q.get("imageUrl")!);
+    // Preview only Facebook's own image host: a crafted link must not make this page load an arbitrary URL.
+    const img = q.get("imageUrl");
+    if (img && /^https:\/\/[^/]+\.fbcdn\.net\//.test(img)) setPreview(img);
     setImported(q.get("from") === "facebook" ? "Facebook" : "your listing");
   }, []);
 

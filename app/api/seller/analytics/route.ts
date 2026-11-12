@@ -17,7 +17,8 @@ export async function GET(req: Request) {
   const out = computeAnalytics(
     listings,
     negs.map((n) => {
-      const agreed = n.audit.find((a) => {
+      // Last match: an earlier approved seller question (holds, pickup) is also APPROVAL_RESOLVED.
+      const agreed = n.audit.findLast((a) => {
         const p = a.payload as { decision?: { type?: string }; approve?: boolean } | null;
         return a.type === "POLICY_DECISION" ? p?.decision?.type === "ACCEPT" : p?.approve === true;
       });

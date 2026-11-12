@@ -30,7 +30,7 @@ export function template(o: Outcome): string {
 // 12 Nov). fmt() already adds the symbol, so drop any symbol written right before a slot.
 export const substitute = (text: string, v: { price?: number; ask?: number; offer?: number }, currency = "USD") =>
   text
-    .replace(/(?:[A-Z]{0,3}[$€£]\s?)+(?=\{(?:price|ask|offer)\})/g, "")
+    .replace(/(?<![A-Za-z])(?:[A-Z]{0,3}[$€£]\s?)+(?=\{(?:price|ask|offer)\})/g, "")
     .replaceAll("{price}", v.price != null ? fmt(v.price, currency) : "that amount")
     .replaceAll("{ask}", v.ask != null ? fmt(v.ask, currency) : "the asking price")
     // The buyer's own number. Without this the model wrote both halves of "I can't accept {price},
