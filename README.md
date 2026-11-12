@@ -215,8 +215,9 @@ API key. It passed 15 of 15 on three consecutive runs; the transcripts are in
   messages correctly, and from the seller account it drafted replies to a real buyer (11 Nov). That run
   showed a doubled draft, since fixed and not yet re-run there. Kijiji selectors are still unverified. Paste mode in the dashboard works
   with any site today.
-- "Add to Closer" reads Facebook item pages through Open Graph tags with a DOM fallback. Not yet checked on a
-  live listing page; Kijiji listing pages are not supported yet.
+- "Add to Closer" was verified on a real Facebook listing (11 Nov): title, price, condition, description and photo
+  arrived in `/sell/new` on the deployed app. Facebook photo links are signed and expire, so an imported photo may
+  stop showing after some days. Kijiji listing pages are not supported yet.
 - Closer is not escrow. PayPal's own buyer and seller protection terms apply to each payment.
 
 ## License
