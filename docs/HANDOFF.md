@@ -34,7 +34,7 @@ Everything is committed and pushed; the working tree is clean apart from an untr
   below" with no checkout off the web (378e486); badge now names the item (74734b9). The fixed build has not been
   re-run on Facebook yet. That thread's negotiation for `film-camera` is AGREED, so retest by choosing a
   different item in the popup (a thread + item pair keeps its negotiation).
-- Three leftover "Laptop" test listings show in the dashboard and popup. Not deleted (needs the owner's OK).
+- The three junk "Laptop" listings were deleted on 12 Nov with the owner's OK; demo items relisted the same night.
 
 **Done 11 Nov (afternoon, power-user pass):**
 
@@ -60,14 +60,21 @@ Everything is committed and pushed; the working tree is clean apart from an untr
 read DOM only, fix `CLOSER_KIJIJI`). After any extension edit the owner presses reload in `chrome://extensions`
 and reloads the page.
 
-**Still needs the owner (nobody else can do these):**
+**Done 12 Nov (night):**
 
-1. Fill the four `TODO(you)` values in `README.md` and the matching slots in `docs/DEVPOST.md`.
-2. Register the PayPal webhook and set `PAYPAL_WEBHOOK_ID` on Render, then send and pay one sandbox
-   invoice from the dashboard button.
-3. Make one sandbox payment through the live chat.
-4. Record the video and submit on Devpost. Copy and video outline are in `docs/DEVPOST.md`.
-5. Set an Anthropic spend limit.
+- PayPal is proven end to end: a sandbox invoice was sent and paid through the webhook (9 Nov), and two chat
+  checkouts were captured and show PAID (Epson printer, Transcend drive, 12 Nov).
+- Two transcript bugs from that demo fixed (2204005): "CA$CA$157" (model wrote a symbol before `{price}`), and
+  "I couldn't get a decision" on a sold item (now the plain "no longer available" reply).
+- Review fixes (bb0bb5c). The extension changed: reload it in `chrome://extensions`.
+- Test logins are kept out of the public repo; they go only in Devpost's judge-only testing box.
+
+**Still needs the owner:**
+
+1. Add the video link to `README.md` line 13 and `docs/DEVPOST.md`; put the logins in Devpost's testing box.
+2. Record the video and submit on Devpost. Deadline is 12:00 pm Pacific = 2:00 pm Saskatoon.
+3. Set an Anthropic spend limit.
+4. After submitting, push nothing to `main` (Render redeploys on every push).
 
 **How to work here without breaking things:**
 
@@ -221,12 +228,7 @@ prize per project. The video may not show third-party trademarks, so film `/demo
 
 ## 7. Known rough edges
 
-- Three junk `laptop-*` listings from earlier testing are still in the live database and render on
-  the landing page. Clear them before recording:
-
-```bash
-npx tsx -e "import('./lib/db.ts').then(async({prisma})=>{console.log(await prisma.listing.deleteMany({where:{slug:{startsWith:'laptop-'}}}));await prisma.\$disconnect()})"
-```
+- (Cleared 12 Nov: the three junk `laptop-*` listings.)
 
 - `README.md` still says port 3000 and still carries a "DB-backed flows were not yet run" caveat
   that is no longer true. Rewrite it before submitting.
