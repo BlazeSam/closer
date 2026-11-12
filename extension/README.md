@@ -35,6 +35,13 @@ Runs on `https://www.kijiji.ca/m-msg-my-messages/*` only (the narrowest pattern 
 rest of kijiji.ca is never touched). Channel is sent as `KIJIJI`. Open a conversation from the inbox and reload the
 page so the content script runs. Log in to Kijiji yourself; the extension never handles Kijiji credentials.
 
+## Add to Closer (import a listing)
+
+On your own Facebook Marketplace listing (`facebook.com/marketplace/item/...` or `facebook.com/commerce/listing/...`)
+a button "Add to Closer" appears bottom right. It reads the title, price, condition, description and photo
+(read-only) and opens `/sell/new` on Closer filled in. You answer the price questions and save. Verified 11 Nov on a
+real listing. Facebook photo links expire, so the imported photo may stop showing after a while.
+
 ## Known limitations
 
 - Verified 11 Nov in real Chrome: one-click pairing from the deployed dashboard, and a draft reply landing in the

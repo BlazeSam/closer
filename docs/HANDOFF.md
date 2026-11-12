@@ -42,8 +42,11 @@ Everything is committed and pushed; the working tree is clean apart from an untr
   `facebook.com/marketplace/item/<id>/` a fixed "Add to Closer" button reads title, price, description, condition and
   first photo (Open Graph tags first, DOM fallback; read-only) and opens `/sell/new?from=facebook&...` pre-filled. The
   seller sets the private prices and saves. Manifest 0.2.0 adds `facebook.com/marketplace/*` (content script runs
-  `selectors.js` + `listing.js` only, never the reply drafter). Prefill checked locally. **Selectors not yet checked on
-  a live listing page.** Kijiji listing pages not supported (skipped: Kijiji DOM never inspected).
+  `selectors.js` + `listing.js` only, never the reply drafter). **Verified 11 Nov on the owner's real listing**
+  (04ed882): the page is `/commerce/listing/<id>/` with no `[role=main]` and no og: tags; the photo has no alt when
+  opened directly (falls back to the largest fbcdn image). Button click opened the deployed `/sell/new` with title,
+  price, condition, description and photo filled. Manifest 0.2.1 also matches `facebook.com/commerce/listing/*`.
+  FB photo URLs expire. Kijiji listing pages not supported (Kijiji DOM never inspected).
 - **Photo + questions** (d7ca91c): `/sell/new` is photo → check details → "a few quick questions" (condition, what the
   photo misses, lowest price, yes-at-once price, pickup/shipping). The draft's price guesses are shown as hints, not
   pre-filled. Plain-words check of floor ≤ auto-accept ≤ asking before the server's. Checked locally (prefill +
@@ -51,7 +54,7 @@ Everything is committed and pushed; the working tree is clean apart from an untr
 - **Sales analytics** (7b194fd, 735f96c): `GET /api/seller/analytics` (seller-gated) + pure `lib/analytics.ts` +
   panel at the top of `/dashboard`. Time to a deal = first message → ACCEPT/approved audit event (falls back to
   `updatedAt`). EXPIRED agreements don't count as sales. Offers above asking are ignored as typos. Checked locally
-  against the live data.
+  against the live data; not yet viewed logged in on the deployed dashboard.
 
 **Next:** seller-side Facebook test, then Kijiji (open a conversation on an ad you posted, buyer wrote last,
 read DOM only, fix `CLOSER_KIJIJI`). After any extension edit the owner presses reload in `chrome://extensions`
